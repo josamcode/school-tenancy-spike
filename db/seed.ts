@@ -58,8 +58,6 @@ export const invoicesB = [
   },
 ];
 
-export const modules = ['finance'];
-
 // Schools for the module entitlement tests. Finance is on for A and B.
 // C has a finance row that is switched off and D has no finance row; both are
 // only read. E is written by one test and read by nothing else.
@@ -79,6 +77,10 @@ export const userCDE = {
   id: 'cde00000-0000-4000-8000-0000000000e1',
   email: 'registrar@reef-waha-manar.test',
 };
+export const membershipsCDE = [schoolC, schoolD, schoolE].map((school) => ({
+  tenantId: school.id,
+  userId: userCDE.id,
+}));
 export const studentsC = [
   { id: 'c1000000-0000-4000-8000-000000000101', fullName: 'Noura Al Ketbi' },
 ];
@@ -89,38 +91,62 @@ export async function seed(ownerUrl: string): Promise<void> {
   try {
     await client.query('begin');
 
-    for (const school of [schoolA, schoolB]) {
+    for (const school of [schoolA, schoolB, schoolC, schoolD, schoolE]) {
       await client.query(
         'insert into tenants (id, name) values ($1, $2) on conflict do nothing',
         [school.id, school.name],
       );
     }
-    for (const user of [userA, userB, userBoth]) {
+    for (const user of [userA, userB, userBoth, userCDE]) {
       await client.query(
         'insert into users (id, email) values ($1, $2) on conflict do nothing',
         [user.id, user.email],
       );
     }
-    for (const membership of memberships) {
+    for (const membership of [...memberships, ...membershipsCDE]) {
       await client.query(
         'insert into memberships (tenant_id, user_id) values ($1, $2) on conflict do nothing',
         [membership.tenantId, membership.userId],
       );
     }
 
-    const tenantData = [
-      { school: schoolA, students: studentsA, invoices: invoicesA },
-      { school: schoolB, students: studentsB, invoices: invoicesB },
+    // finance: true or false writes a row; undefined leaves the school with no row.
+    const tenantData: {
+      school: { id: string };
+      finance?: boolean;
+      students?: { id: string; fullName: string }[];
+      invoices?: typeof invoicesA;
+    }[] = [
+      {
+        school: schoolA,
+        finance: true,
+        students: studentsA,
+        invoices: invoicesA,
+      },
+      {
+        school: schoolB,
+        finance: true,
+        students: studentsB,
+        invoices: invoicesB,
+      },
+      { school: schoolC, finance: false, students: studentsC },
+      { school: schoolD },
+      { school: schoolE },
     ];
-    for (const { school, students, invoices } of tenantData) {
+    for (const {
+      school,
+      finance,
+      students = [],
+      invoices = [],
+    } of tenantData) {
       // Tenant data goes through the same policy as every other write.
       await client.query("select set_config('app.tenant_id', $1, true)", [
         school.id,
       ]);
-      for (const module of modules) {
+      if (finance !== undefined) {
         await client.query(
-          'insert into tenant_modules (module, enabled) values ($1, true) on conflict do nothing',
-          [module],
+          'insert into tenant_modules (module, enabled) values ($1, $2) on conflict do nothing',
+          ['finance', finance],
         );
       }
       for (const student of students) {
