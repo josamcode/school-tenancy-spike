@@ -283,6 +283,104 @@ describe('the event tables', () => {
     });
   });
 
+  describe('event_failures', () => {
+    const record = (client: pg.PoolClient, eventId: string, error = 'boom') =>
+      client.query(
+        'insert into event_failures (event_id, error) values ($1, $2)',
+        [eventId, error],
+      );
+
+    it('takes the school and the time from the transaction', async () => {
+      const row = await inScope(runtime, scope, async (client) => {
+        const id = await newEvent(client);
+        await record(client, id, 'No registration fee is configured');
+        const { rows } = await client.query(
+          'select tenant_id, error, failed_at from event_failures where event_id = $1',
+          [id],
+        );
+        return rows[0];
+      });
+      expect(row).toEqual({
+        tenant_id: school.id,
+        error: 'No registration fee is configured',
+        failed_at: expect.any(Date),
+      });
+    });
+
+    it('holds one row per event', async () => {
+      const failure = await failureOf(() =>
+        inScope(runtime, scope, async (client) => {
+          const id = await newEvent(client);
+          await record(client, id);
+          await record(client, id);
+        }),
+      );
+      expect(failure).toMatchObject(uniqueViolation);
+    });
+
+    it('lets a second recording of the same event do nothing', async () => {
+      const result = await inScope(runtime, scope, async (client) => {
+        const id = await newEvent(client);
+        await record(client, id, 'first');
+        const second = await client.query(
+          `insert into event_failures (event_id, error) values ($1, 'second')
+           on conflict do nothing`,
+          [id],
+        );
+        const { rows } = await client.query(
+          'select error from event_failures where event_id = $1',
+          [id],
+        );
+        return { added: second.rowCount, rows };
+      });
+      expect(result).toEqual({ added: 0, rows: [{ error: 'first' }] });
+    });
+
+    it('refuses a failure for an event that does not exist in this school', async () => {
+      const failure = await failureOf(() =>
+        inScope(runtime, scope, (client) => record(client, randomUUID())),
+      );
+      expect(failure).toMatchObject({ code: '23503' });
+    });
+
+    it('refuses a failure with no school', async () => {
+      const failure = await failureOf(() =>
+        inScope(runtime, { userId: userEvents.id }, (client) =>
+          record(client, randomUUID()),
+        ),
+      );
+      expect(failure).toMatchObject(rlsViolation);
+    });
+
+    it('shows nothing without a school', async () => {
+      const { rows } = await runtime.query(
+        'select event_id from event_failures',
+      );
+      expect(rows).toEqual([]);
+    });
+
+    it.each([
+      [
+        'name another school',
+        `insert into event_failures (tenant_id, event_id, error)
+         values ('${other.id}', gen_random_uuid(), 'boom')`,
+      ],
+      [
+        'choose the time',
+        `insert into event_failures (event_id, error, failed_at)
+         values (gen_random_uuid(), 'boom', now())`,
+      ],
+      ['change a failure', `update event_failures set error = 'other'`],
+      ['delete a failure', 'delete from event_failures'],
+      ['truncate the failures', 'truncate event_failures'],
+    ])('does not let the runtime role %s', async (_what, query) => {
+      const failure = await failureOf(() =>
+        inScope(runtime, scope, (client) => client.query(query)),
+      );
+      expect(failure).toMatchObject(permissionDenied);
+    });
+  });
+
   describe('registration_fees', () => {
     it('is provisioned by the owner only', async () => {
       const failure = await failureOf(() =>

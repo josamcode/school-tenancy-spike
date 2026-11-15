@@ -32,6 +32,7 @@ export interface TestWorker {
 }
 
 export interface WorkerOptions {
+  events?: Partial<WorkerConfig['events']>;
   webhook?: Partial<WorkerConfig['webhook']>;
   // Size of the runtime role's pool. The default is the application's own.
   poolMax?: number;
@@ -51,6 +52,7 @@ export async function startWorker(
     queuePrefix: `t${randomBytes(4).toString('hex')}-`,
     pollingIntervalSeconds: 0.5,
     dispatchIntervalMs: 200,
+    events: { retryLimit: 5, retryDelaySeconds: 1, ...options.events },
     webhook: {
       retryLimit: 2,
       retryDelaySeconds: 1,
@@ -232,4 +234,19 @@ export const attemptsOf = (pool: pg.Pool, ref: EventRef) =>
     `select attempt_no as "attemptNo", response_status as "responseStatus", error
        from webhook_attempts where event_id = $1 order by attempt_no`,
     [ref.eventId],
+  );
+
+export interface EventFailure {
+  eventId: string;
+  error: string;
+  failedAt: Date;
+}
+
+// The events of a school that used all their retries.
+export const failuresOf = (pool: pg.Pool, schoolId: string) =>
+  read<EventFailure>(
+    pool,
+    schoolId,
+    `select event_id as "eventId", error, failed_at as "failedAt"
+       from event_failures order by failed_at`,
   );
