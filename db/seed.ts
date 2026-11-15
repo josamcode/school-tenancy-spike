@@ -252,6 +252,11 @@ export const applications = {
     'Applicant Rolled Back',
   ),
   kept: application(eventSchools.acceptRollback, 2, 'Applicant Kept'),
+  overlapped: application(
+    eventSchools.acceptRollback,
+    3,
+    'Applicant Overlapped',
+  ),
   endToEnd: application(eventSchools.endToEnd, 1, 'Applicant End To End'),
 };
 
@@ -271,10 +276,12 @@ export async function seed(ownerUrl: string): Promise<void> {
       schoolG,
       schoolH,
       ...Object.values(ledgerSchools),
+      ...Object.values(eventSchools),
     ];
     for (const school of schools) {
       await client.query(
-        'insert into tenants (id, name) values ($1, $2) on conflict do nothing',
+        `insert into tenants (id, name, timezone) values ($1, $2, 'Asia/Dubai')
+         on conflict do nothing`,
         [school.id, school.name],
       );
     }
@@ -289,6 +296,8 @@ export async function seed(ownerUrl: string): Promise<void> {
       userMemberG,
       userStaffDGrantH,
       userLedger,
+      userEvents,
+      userEventsStaff,
     ];
     for (const user of users) {
       await client.query(
@@ -300,12 +309,25 @@ export async function seed(ownerUrl: string): Promise<void> {
       tenantId: school.id,
       userId: userLedger.id,
     }));
+    const membershipsEvents = Object.values(eventSchools).map((school) => ({
+      tenantId: school.id,
+      userId: userEvents.id,
+    }));
     const admins = [
       ...memberships,
       ...membershipsCDE,
       ...membershipsLedger,
+      ...membershipsEvents,
     ].map((membership) => ({ ...membership, role: 'school_admin' }));
-    for (const membership of [...admins, ...roleMemberships]) {
+    const staff = [
+      ...roleMemberships,
+      {
+        tenantId: eventSchools.accept.id,
+        userId: userEventsStaff.id,
+        role: 'staff',
+      },
+    ];
+    for (const membership of [...admins, ...staff]) {
       await client.query(
         'insert into memberships (tenant_id, user_id, role) values ($1, $2, $3) on conflict do nothing',
         [membership.tenantId, membership.userId, membership.role],
@@ -337,6 +359,7 @@ export async function seed(ownerUrl: string): Promise<void> {
     const tenantData: {
       school: { id: string };
       finance?: boolean;
+      admissions?: boolean;
       baseCurrency?: string;
       students?: { id: string; fullName: string }[];
       invoices?: typeof invoicesA;
@@ -368,10 +391,18 @@ export async function seed(ownerUrl: string): Promise<void> {
           { id: school.students.t, fullName: 'Tala Al Zaabi' },
         ],
       })),
+      ...Object.values(eventSchools).map((school) => ({
+        school,
+        finance: school.finance,
+        admissions: school.admissions,
+        baseCurrency: 'AED',
+        students: [{ id: school.student, fullName: 'Rashid Al Marri' }],
+      })),
     ];
     for (const {
       school,
       finance,
+      admissions,
       baseCurrency,
       students = [],
       invoices = [],
@@ -384,6 +415,12 @@ export async function seed(ownerUrl: string): Promise<void> {
         await client.query(
           'insert into tenant_modules (module, enabled) values ($1, $2) on conflict do nothing',
           ['finance', finance],
+        );
+      }
+      if (admissions !== undefined) {
+        await client.query(
+          'insert into tenant_modules (module, enabled) values ($1, $2) on conflict do nothing',
+          ['admissions', admissions],
         );
       }
       if (baseCurrency !== undefined) {
@@ -404,6 +441,17 @@ export async function seed(ownerUrl: string): Promise<void> {
           [invoice.id, invoice.studentId, invoice.amount, invoice.currency],
         );
       }
+    }
+
+    for (const application of Object.values(applications)) {
+      await client.query("select set_config('app.tenant_id', $1, true)", [
+        application.tenantId,
+      ]);
+      await client.query(
+        `insert into admission_applications (id, applicant_name) values ($1, $2)
+         on conflict do nothing`,
+        [application.id, application.applicantName],
+      );
     }
 
     await client.query('commit');
