@@ -26,6 +26,9 @@ export interface Sabotage {
   files: string[];
   // Each test by its full name, and a text its failure message must contain.
   mustFail: { test: string; because: string }[];
+  // Earlier tests that the named ones build on. They are run too. They must
+  // pass with no patch, and with the patch they decide nothing.
+  alsoRun?: string[];
 }
 
 export interface Row {
@@ -381,6 +384,10 @@ function lanes(deps: string): Record<Sabotage['lane'], Lane> {
 }
 
 const union = <T>(lists: T[][]) => [...new Set(lists.flat())];
+const testsOf = (sabotage: Sabotage) => [
+  ...sabotage.mustFail.map((must) => must.test),
+  ...(sabotage.alsoRun ?? []),
+];
 
 function judge(sabotage: Sabotage, results: Results, output: string): Row {
   const failed: string[] = [];
@@ -516,7 +523,7 @@ export async function prove(options: ProveOptions): Promise<ProveResult> {
       const sabotages = byLane(which);
       if (sabotages.length === 0) continue;
       progress(`Baseline, ${which} lane`);
-      const names = union(sabotages.map((s) => s.mustFail.map((m) => m.test)));
+      const names = union(sabotages.map(testsOf));
       const directory = prepare(`baseline-${which}`, which);
       try {
         const { results, output } = await lane[which].test(
@@ -563,7 +570,7 @@ export async function prove(options: ProveOptions): Promise<ProveResult> {
           const { results, output } = await lane[sabotage.lane].test(
             directory,
             sabotage.files,
-            sabotage.mustFail.map((m) => m.test),
+            testsOf(sabotage),
             path.join(reports, `${sabotage.id}.json`),
           );
           row = judge(sabotage, results, output);
