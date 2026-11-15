@@ -139,10 +139,12 @@ describe('the dispatcher and queue roles', () => {
 
     it('sees which event belongs to which school, across schools', async () => {
       await withEvents();
-      const { rows } = await dispatcher.query(
-        'select id, tenant_id from outbox_events where id = any($1)',
-        [[...events[one.id], ...events[two.id]]],
-      );
+      const { rows } = await dispatcher.query<{
+        id: string;
+        tenant_id: string;
+      }>('select id, tenant_id from outbox_events where id = any($1)', [
+        [...events[one.id], ...events[two.id]],
+      ]);
       expect(rows).toHaveLength(4);
       for (const school of [one, two]) {
         expect(
@@ -231,7 +233,8 @@ describe('the dispatcher and queue roles', () => {
         runtime,
         { tenantId: two.id },
         async (client) =>
-          (await client.query('select id, tenant_id from outbox_events')).rows,
+          (await client.query<{ id: string }>('select id from outbox_events'))
+            .rows,
       );
       expect(rows.map((row) => row.id).sort()).toEqual(
         [...events[two.id]].sort(),

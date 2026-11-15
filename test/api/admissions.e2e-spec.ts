@@ -224,9 +224,9 @@ describe('accepting a student', () => {
         accept(applications.atOnce),
         accept(applications.atOnce),
       ]);
-      expect(responses.map((response) => response.status).sort()).toEqual([
-        201, 409,
-      ]);
+      expect(
+        responses.map((response) => response.status).sort((a, b) => a - b),
+      ).toEqual([201, 409]);
       const students = await studentsNamed(applications.atOnce.applicantName);
       expect(students).toHaveLength(1);
       const events = await eventsFor(applications.atOnce);
