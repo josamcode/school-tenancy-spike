@@ -53,7 +53,12 @@ pending admission applications. For the calendar tests it adds schools in five
 countries and five timezones, with invoices issued at fixed instants, and
 three official Hijri month starts, which are test fixtures and not a record of
 real announcements. Every other school is in `Asia/Dubai` and has no country.
-The ids are in `db/seed.ts`.
+For the demo screens it adds five schools with Arabic and English names, four
+users, a ledger that holds the netting scenario of the ledger tests with
+December 2025 locked, a registration fee, a webhook endpoint at the local
+fake receiver, and six pending admission applications in each of two schools.
+Accepting an application uses it up. A database reset, described at the end
+of this file, brings all six back. The ids are in `db/seed.ts`.
 
 The passwords in `db/bootstrap/roles.sql` and `docker-compose.yml`, and every
 value in `.env.example` including `JWT_SECRET`, are local development values.
@@ -78,20 +83,23 @@ node --env-file=.env -e "import('jose').then(async ({ SignJWT }) => console.log(
 curl -H "Authorization: Bearer <token>" http://localhost:3100/schools/a0000000-0000-4000-8000-000000000001/students
 ```
 
-The web app is a demo of the proofs, not a product. One command runs it beside
-the API:
+The web app is a demo of the proofs, not a product. One command runs all of
+it:
 
 ```bash
 pnpm dev
 ```
 
-The API listens on 3100 and the web app on 3200. `http://localhost:3200` goes
-to the Arabic app at `/ar`; `/en` is the English one. There is no identity
-provider yet, so in development `/ar/dev/sign-in` lists a few seed users and
-signs you in as one of them. It is labelled as a demo. Every screen then reads
-its data from the API as that user.
+It starts four processes: the API on 3100, the web app on 3200, the worker
+that delivers events, and a fake webhook receiver on `127.0.0.1:3300`.
+`http://localhost:3200` goes to the Arabic app at `/ar`; `/en` is the English
+one. There is no identity provider yet, so in development `/ar/dev/sign-in`
+signs you in as a seed user. It is labelled as a demo, and it is the guide to
+the demo: one group per proof, and each entry lands on the page that shows it.
+Every screen reads its data from the API as that user, and shows beside it
+what the server sent back for each call: the status, the code and the body.
 
-Events are delivered by a second process, the worker:
+The worker is a process of its own:
 
 ```bash
 pnpm start:worker
@@ -100,6 +108,14 @@ pnpm start:worker
 It needs `DISPATCHER_DATABASE_URL` and `QUEUE_DATABASE_URL` as well as
 `DATABASE_URL`. The app needs neither and is never given them. On first start
 pg-boss creates its tables in the `pgboss` schema.
+
+The fake receiver (`dev/receiver.ts`, `pnpm start:receiver`) stands in for a
+school's own system. It checks the signature of each webhook, answers 401
+when it does not match, and reports what it received at
+`/received/<event id>`. It exists in development only: it is outside both
+applications, in neither build, and refuses to start when `NODE_ENV` is
+`production`. The development web server asks it what it recorded and shows
+that on the page that follows an acceptance; a production build does not.
 
 ## How tenant isolation works
 
@@ -367,6 +383,45 @@ override is checked when a date is converted, not when it is written; a Hijri
 day starts at midnight here, not at sunset; and an invoice has one
 description and one amount, with no lines.
 
+## How the demo screens work
+
+Each proof has a screen, and every screen shows two things side by side: what
+a user would see, and the server response for each call the page made.
+
+- **The caller's schools.** `GET /me/schools` has no school in its path. It
+  runs in a transaction that sets `app.user_id` and never `app.tenant_id`, so
+  every policy that looks at the school matches nothing. What is left to read
+  is the caller's own memberships and grants. Each school's name is then read
+  in a transaction of its own, through the same path as any school route,
+  which confirms the access again.
+- **Isolation.** The students page lists the caller's schools and one
+  school's students. A school that is not theirs, and an id that names no
+  school, get the same plain 403.
+- **Modules and permissions** are one page: a real call to each of the
+  school's four pages, with what the server answered. Where a module is off
+  the answer is `MODULE_DISABLED`; where the user lacks the permission it is
+  `PERMISSION_DENIED`. The app has no switch for a module. Switching one is
+  the owner's right, and the web server holds no owner credentials.
+- **The ledger.** `GET /schools/:schoolId/ledger` (`finance:read`) returns the
+  total per currency, each student's balance, the FX positions, the FX gain
+  or loss and the periods. It is the only ledger route. No route posts an
+  entry.
+- **Events.** `GET /schools/:schoolId/admissions/applications` and
+  `GET .../applications/:applicationId/event` (`admissions:read`) list the
+  applications and say what became of an acceptance: when it was dispatched,
+  where it was routed, and each delivery attempt. The endpoint's secret is
+  never returned. The fee is read from the ledger route, so admissions code
+  reads no finance table.
+- **The design** is six colors, the bundled Noto faces, square corners and no
+  shadows. Monospace is used for the raw server response only. Tests hold
+  the stylesheets, the catalogs and the rendered pages to these rules.
+
+Known limits: `GET /me/schools` costs one short transaction per school;
+the page that follows an acceptance asks the API again once a second, for up
+to a minute, and nothing is pushed to it; the event of an application is
+found by a search of the event payload, with no index; and each demo school
+has six pending applications, which a database reset brings back.
+
 ## Test
 
 Tests start their own PostgreSQL 16 container with Testcontainers, so Docker
@@ -377,7 +432,8 @@ school. They run after the other files, one at a time.
 
 The browser tests build the API and the web app, start a database of their
 own, and run both with Playwright: the production build of the web app, and a
-development server for the demo sign-in.
+development server for the demo sign-in. They also start the worker and the
+fake receiver, so an acceptance can be followed to its end.
 
 ```bash
 pnpm test                            # the API tests
@@ -391,7 +447,8 @@ pnpm lint
 ## Reset the local database
 
 A database that holds invoices from before they had numbers must be reset:
-the migration adds the number as a required column.
+the migration adds the number as a required column. A reset also brings back
+the pending applications of the demo schools.
 
 ```bash
 docker compose down -v
