@@ -25,6 +25,12 @@ export default async function setup(project: TestProject) {
   // The app under test only ever receives the runtime role's connection string.
   project.provide('databaseUrl', urlFor('app_runtime', 'dev_only_runtime'));
   project.provide('ownerDatabaseUrl', ownerUrl);
+  // Only the worker under test and the role tests receive these two.
+  project.provide(
+    'dispatcherDatabaseUrl',
+    urlFor('app_dispatcher', 'dev_only_dispatcher'),
+  );
+  project.provide('queueDatabaseUrl', urlFor('app_queue', 'dev_only_queue'));
 
   return async () => {
     await container.stop();
@@ -35,5 +41,7 @@ declare module 'vitest' {
   export interface ProvidedContext {
     databaseUrl: string;
     ownerDatabaseUrl: string;
+    dispatcherDatabaseUrl: string;
+    queueDatabaseUrl: string;
   }
 }

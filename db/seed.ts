@@ -176,6 +176,85 @@ export const userLedger = {
   email: 'bursar@ledger.test',
 };
 
+// Event schools: base currency AED and one student each. Each one is written
+// by a single test and read by nothing else. finance: true or false writes a
+// row; undefined leaves the school with no finance row.
+const eventSchool = (
+  n: number,
+  name: string,
+  modules: { admissions?: boolean; finance?: boolean } = {},
+) => {
+  const nn = n.toString(16).padStart(2, '0');
+  return {
+    id: `e5000000-0000-4000-8000-0000000000${nn}`,
+    name,
+    student: `e5000000-0000-4000-8000-00000000${nn}01`,
+    ...modules,
+  };
+};
+export const eventSchools = {
+  accept: eventSchool(1, 'Accept School', { admissions: true }),
+  acceptRollback: eventSchool(2, 'Accept Rollback School', {
+    admissions: true,
+  }),
+  rolesOne: eventSchool(3, 'Event Roles School One'),
+  rolesTwo: eventSchool(4, 'Event Roles School Two'),
+  tables: eventSchool(5, 'Event Tables School', { finance: true }),
+  financeTwice: eventSchool(6, 'Fee Twice School', { finance: true }),
+  financeAtOnce: eventSchool(7, 'Fee At Once School', { finance: true }),
+  financeCrash: eventSchool(8, 'Fee Crash School', { finance: true }),
+  isolationOne: eventSchool(9, 'Handler Isolation School One'),
+  isolationTwo: eventSchool(10, 'Handler Isolation School Two'),
+  routeOff: eventSchool(11, 'Route Off School', { finance: false }),
+  routeOn: eventSchool(12, 'Route On School', { finance: true }),
+  switchOnOff: eventSchool(13, 'Switch On Off School', { finance: true }),
+  switchOffOn: eventSchool(14, 'Switch Off On School', { finance: false }),
+  switchWaits: eventSchool(15, 'Switch Waits School', { finance: true }),
+  switchAfter: eventSchool(16, 'Switch After School', { finance: true }),
+  hookSigned: eventSchool(17, 'Hook Signed School'),
+  hookRetry: eventSchool(18, 'Hook Retry School'),
+  hookFails: eventSchool(19, 'Hook Fails School'),
+  hookPasses: eventSchool(20, 'Hook Passes School'),
+  hookFee: eventSchool(21, 'Hook Fee School', { finance: true }),
+  hookDead: eventSchool(22, 'Hook Dead School'),
+  hookHandoff: eventSchool(23, 'Hook Handoff School'),
+  hookHangs: eventSchool(24, 'Hook Hangs School'),
+  hookHangFee: eventSchool(25, 'Hook Hang Fee School', { finance: true }),
+  feeDate: eventSchool(26, 'Fee Date School', { finance: true }),
+  dispatch: eventSchool(27, 'Dispatch School', { finance: true }),
+  endToEnd: eventSchool(28, 'End To End School', { admissions: true }),
+  tablesOther: eventSchool(29, 'Event Tables Other School'),
+};
+export const userEvents = {
+  id: 'e5000000-0000-4000-8000-0000000000a1',
+  email: 'registrar@events.test',
+};
+// Staff in the accept school, so they hold students:read and nothing else.
+export const userEventsStaff = {
+  id: 'e5000000-0000-4000-8000-0000000000a2',
+  email: 'teacher@events.test',
+};
+const application = (school: { id: string }, k: number, name: string) => ({
+  id: `${school.id.slice(0, -6)}${school.id.slice(-2)}0a0${k}`,
+  tenantId: school.id,
+  applicantName: name,
+});
+// Pending applications. Each is accepted by at most one test.
+export const applications = {
+  accepted: application(eventSchools.accept, 1, 'Applicant Accepted'),
+  twice: application(eventSchools.accept, 2, 'Applicant Twice'),
+  atOnce: application(eventSchools.accept, 3, 'Applicant At Once'),
+  locked: application(eventSchools.accept, 4, 'Applicant Locked'),
+  denied: application(eventSchools.accept, 5, 'Applicant Denied'),
+  rolledBack: application(
+    eventSchools.acceptRollback,
+    1,
+    'Applicant Rolled Back',
+  ),
+  kept: application(eventSchools.acceptRollback, 2, 'Applicant Kept'),
+  endToEnd: application(eventSchools.endToEnd, 1, 'Applicant End To End'),
+};
+
 export async function seed(ownerUrl: string): Promise<void> {
   const client = new pg.Client({ connectionString: ownerUrl });
   await client.connect();
