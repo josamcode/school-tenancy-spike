@@ -162,6 +162,15 @@ The ledger belongs to the finance module. It has no HTTP routes yet.
 - A conversion uses the school's latest rate on or before the entry date and
   copies it onto the entry, so a later change to the rate table does not alter
   history.
+- A revaluation uses both sides' balances as of its date: only lines whose
+  entry is dated on or before it. Entries dated later belong to a later
+  revaluation, even when they were posted first.
+- A revaluation takes an advisory lock for its school and currency
+  exclusively, and a conversion takes it shared, so two revaluations cannot
+  book the same difference twice and a conversion cannot slip in between the
+  read and the post.
+- Posting an invoice reads it under a share lock, so a change made while the
+  posting is open waits and is then refused.
 - The student sub-ledger is derived from the lines on control accounts, per
   student and currency. Every line on a control account names a student.
 - A school's base currency is set once in `finance_settings` and cannot be
