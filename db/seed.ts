@@ -85,6 +85,58 @@ export const studentsC = [
   { id: 'c1000000-0000-4000-8000-000000000101', fullName: 'Noura Al Ketbi' },
 ];
 
+// Access fixtures. Every membership above has the role school_admin.
+// This user is staff in A and school_admin in C, so a check that forgot the
+// school would give them an admin's rights in A.
+export const userStaffA = {
+  id: 'a0000000-0000-4000-8000-0000000000a2',
+  email: 'teacher@alnoor.test',
+};
+// F is added to the group by one test. G is written by the revoke and remove
+// tests. Nothing else reads either of them.
+export const schoolF = {
+  id: 'f0000000-0000-4000-8000-000000000001',
+  name: 'Al Safa School',
+};
+export const schoolG = {
+  id: 'a9000000-0000-4000-8000-000000000001',
+  name: 'Al Wadi School',
+};
+export const studentsG = [
+  { id: 'a9000000-0000-4000-8000-000000000101', fullName: 'Hamad Al Nuaimi' },
+];
+export const userGroupAdmin = {
+  id: '90000000-0000-4000-8000-0000000000d1',
+  email: 'admin@northgroup.test',
+};
+export const userGrantG = {
+  id: 'a9000000-0000-4000-8000-0000000000a1',
+  email: 'auditor@alwadi.test',
+};
+export const userMemberG = {
+  id: 'a9000000-0000-4000-8000-0000000000a2',
+  email: 'teacher@alwadi.test',
+};
+export const roleMemberships = [
+  { tenantId: schoolA.id, userId: userStaffA.id, role: 'staff' },
+  { tenantId: schoolC.id, userId: userStaffA.id, role: 'school_admin' },
+  { tenantId: schoolG.id, userId: userMemberG.id, role: 'staff' },
+];
+export const grants = [
+  {
+    tenantId: schoolB.id,
+    userId: userGroupAdmin.id,
+    permission: 'students:read',
+  },
+  { tenantId: schoolG.id, userId: userGrantG.id, permission: 'students:read' },
+];
+// The group links A and B. Its admin has a grant on B only.
+export const group = {
+  id: '91000000-0000-4000-8000-000000000001',
+  name: 'North Schools Group',
+};
+export const groupSchools = [schoolA.id, schoolB.id];
+
 export async function seed(ownerUrl: string): Promise<void> {
   const client = new pg.Client({ connectionString: ownerUrl });
   await client.connect();
