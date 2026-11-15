@@ -124,10 +124,13 @@ export class LedgerService {
     invoiceId: string,
     target: Posting & { receivableAccountId: string; incomeAccountId: string },
   ): Promise<string> {
+    // The share lock makes a concurrent change to the invoice wait until this
+    // posting commits. The invoice trigger then sees the entry and refuses it.
     const [invoice] = await this.tenantDb.db
       .select()
       .from(invoices)
-      .where(eq(invoices.id, invoiceId));
+      .where(eq(invoices.id, invoiceId))
+      .for('share');
     if (!invoice) throw new Error(`Unknown invoice ${invoiceId}`);
 
     const currency = currencyOrThrow(invoice.currency);
@@ -188,6 +191,7 @@ export class LedgerService {
   // each currency balances by itself.
   async convert(input: ConversionInput): Promise<string> {
     const position = await this.positionOf(input.currency);
+    await this.lockPosition(input.currency, 'shared');
     const rate = await this.rateOn(input.currency, input.date);
     const foreign = currencyOrThrow(input.currency);
     const base = currencyOrThrow(position.baseCurrency);
@@ -232,20 +236,31 @@ export class LedgerService {
   }
 
   // Sets the base side of a position to what its foreign side is worth at the
-  // rate of the date: target = -(foreign-side balance) x rate, rounded half
-  // away from zero to the base currency's minor units. The difference goes to
+  // rate of the date: target = -(foreign-side balance as of the date) x rate,
+  // rounded half away from zero to the base currency's minor units. The difference goes to
   // FX gain or loss. Closing a position is the same operation with a foreign
   // balance of zero. Returns null, and posts nothing, when there is no
   // difference.
   async revalue(input: Posting & { currency: string }): Promise<string | null> {
     const position = await this.positionOf(input.currency);
+    // Taken before the balances are read, and held until this transaction
+    // ends, so two revaluations cannot both book the same difference.
+    await this.lockPosition(input.currency, 'exclusive');
     const rate = await this.rateOn(input.currency, input.date);
     const foreign = currencyOrThrow(input.currency);
     const base = currencyOrThrow(position.baseCurrency);
 
-    const foreignBalance = await this.accountBalance(position.foreignAccountId);
+    // Both sides as of the revaluation date. Entries dated later belong to a
+    // later revaluation, even when they were posted first.
+    const foreignBalance = await this.accountBalance(
+      position.foreignAccountId,
+      input.date,
+    );
     const target = toBase(negate(foreignBalance, foreign), foreign, base, rate);
-    const current = await this.accountBalance(position.baseAccountId);
+    const current = await this.accountBalance(
+      position.baseAccountId,
+      input.date,
+    );
     const difference = subtract(target, current, base);
     if (toMinor(difference, base) === 0n) return null;
 
@@ -273,7 +288,8 @@ export class LedgerService {
     if (locked.length === 0) throw new Error(`Unknown period ${periodId}`);
   }
 
-  async accountBalance(accountId: string): Promise<string> {
+  // With asOf, only lines whose entry is dated on or before that date count.
+  async accountBalance(accountId: string, asOf?: string): Promise<string> {
     const db = this.tenantDb.db;
     const [account] = await db
       .select({ currency: ledgerAccounts.currency })
@@ -284,7 +300,19 @@ export class LedgerService {
     const [row] = await db
       .select({ total: sql<string>`coalesce(sum(${ledgerLines.amount}), 0)` })
       .from(ledgerLines)
-      .where(eq(ledgerLines.accountId, accountId));
+      .innerJoin(
+        ledgerEntries,
+        and(
+          eq(ledgerEntries.tenantId, ledgerLines.tenantId),
+          eq(ledgerEntries.id, ledgerLines.entryId),
+        ),
+      )
+      .where(
+        and(
+          eq(ledgerLines.accountId, accountId),
+          asOf === undefined ? undefined : lte(ledgerEntries.entryDate, asOf),
+        ),
+      );
     const currency = currencyOrThrow(account.currency);
     return fromMinor(toMinor(row.total, currency), currency);
   }
@@ -352,6 +380,23 @@ export class LedgerService {
       .limit(1);
     if (!row) throw new Error(`No ${currency} rate on or before ${date}`);
     return row.rate;
+  }
+
+  // One advisory lock per school and currency, released when the transaction
+  // ends. A revaluation takes it exclusively and a conversion takes it shared,
+  // so conversions do not block each other but neither can run while the
+  // position is being revalued. It is an advisory lock because the runtime
+  // role has no UPDATE on fx_positions and so cannot lock its rows.
+  private async lockPosition(
+    currency: string,
+    mode: 'shared' | 'exclusive',
+  ): Promise<void> {
+    const key = sql`hashtextextended(current_setting('app.tenant_id') || ':fx:' || ${currency}, 0)`;
+    await this.tenantDb.db.execute(
+      mode === 'exclusive'
+        ? sql`select pg_advisory_xact_lock(${key})`
+        : sql`select pg_advisory_xact_lock_shared(${key})`,
+    );
   }
 
   private async positionOf(currency: string) {
