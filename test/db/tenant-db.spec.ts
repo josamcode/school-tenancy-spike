@@ -56,9 +56,9 @@ describe('TenantDb', () => {
       schoolA.id,
       async () => tenantDb.db,
     );
-    await expect(leaked.execute(sql`select 1`)).rejects.toThrow(
-      /transaction has ended/,
-    );
+    await expect(leaked.execute(sql`select 1`)).rejects.toMatchObject({
+      cause: { message: expect.stringContaining('transaction has ended') },
+    });
   });
 
   it('rejects a late call that still carries the request context', async () => {
