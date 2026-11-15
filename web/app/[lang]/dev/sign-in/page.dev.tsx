@@ -1,10 +1,10 @@
 import { notFound } from 'next/navigation';
-import { seedUsers } from '../../../../dev/seed-users';
+import { demoGuide } from '../../../../dev/demo-guide';
 import { isLang } from '../../../../lib/i18n';
 import { signInAsSeedUser } from './actions.dev';
 
 // A route in development only: next.config.ts leaves *.dev.tsx files out of
-// a production build.
+// a production build. It is also the demo guide: one group per proof.
 export default async function DemoSignIn({
   params,
 }: {
@@ -21,26 +21,36 @@ export default async function DemoSignIn({
           للتجربة فقط، في بيئة التطوير.
         </span>
       </p>
-      <ul className="choices">
-        {seedUsers.map((user) => (
-          <li key={`${user.userId} ${user.schoolId}`}>
-            <form action={signInAsSeedUser}>
-              <input type="hidden" name="lang" value={lang} />
-              <input type="hidden" name="userId" value={user.userId} />
-              <input type="hidden" name="schoolId" value={user.schoolId} />
-              <button
-                type="submit"
-                data-testid="sign-in-as"
-                data-user={user.userId}
-                data-school={user.schoolId}
-              >
-                <bdi dir="ltr">{user.email}</bdi>
-                <small dir="ltr">{user.shows}</small>
-              </button>
-            </form>
-          </li>
-        ))}
-      </ul>
+      {demoGuide.map((group) => (
+        <section
+          key={group.id}
+          className="guide-group"
+          data-testid="guide-group"
+          data-group={group.id}
+        >
+          <h2>{group.title[lang]}</h2>
+          <ul className="choices">
+            {group.entries.map((entry) => (
+              <li key={entry.id}>
+                <form action={signInAsSeedUser}>
+                  <input type="hidden" name="lang" value={lang} />
+                  <input type="hidden" name="entry" value={entry.id} />
+                  <button
+                    type="submit"
+                    data-testid="sign-in-as"
+                    data-entry={entry.id}
+                    data-user={entry.userId}
+                    data-school={entry.schoolId}
+                  >
+                    <bdi dir="ltr">{entry.email}</bdi>
+                    <small>{entry.shows[lang]}</small>
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
     </main>
   );
 }

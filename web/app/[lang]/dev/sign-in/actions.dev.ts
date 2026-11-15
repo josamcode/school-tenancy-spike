@@ -6,7 +6,7 @@ import { parseEnv } from 'node:util';
 import { SignJWT } from 'jose';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { seedUsers } from '../../../../dev/seed-users';
+import { demoGuide } from '../../../../dev/demo-guide';
 import { SESSION_COOKIE } from '../../../../lib/api';
 import { isLang } from '../../../../lib/i18n';
 
@@ -22,18 +22,17 @@ function developmentSecret(): string {
 }
 
 // Stands in for an identity provider, in development only: it signs the same
-// token the API's own tests use, for a user on the seed list and no one else.
+// token the API's own tests use, for a user in the demo guide and no one
+// else, and lands them on the page that entry of the guide is about.
 export async function signInAsSeedUser(form: FormData): Promise<void> {
   if (process.env.NODE_ENV === 'production') {
     throw new Error('The demo sign-in does not exist in production');
   }
   const lang = form.get('lang');
-  const user = seedUsers.find(
-    (candidate) =>
-      candidate.userId === form.get('userId') &&
-      candidate.schoolId === form.get('schoolId'),
-  );
-  if (!user || !isLang(lang)) throw new Error('Not on the seed list');
+  const user = demoGuide
+    .flatMap((group) => group.entries)
+    .find((entry) => entry.id === form.get('entry'));
+  if (!user || !isLang(lang)) throw new Error('Not in the demo guide');
 
   const token = await new SignJWT()
     .setProtectedHeader({ alg: 'HS256' })
@@ -45,5 +44,5 @@ export async function signInAsSeedUser(form: FormData): Promise<void> {
     sameSite: 'lax',
     path: '/',
   });
-  redirect(`/${lang}/schools/${user.schoolId}/invoices`);
+  redirect(`/${lang}${user.path}`);
 }
