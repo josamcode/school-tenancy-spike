@@ -1,0 +1,84 @@
+/* Logical properties only: the document follows the page direction. */
+
+.invoice {
+  max-inline-size: 794px;
+  margin-inline: auto;
+  padding-block: 32px;
+  padding-inline: 40px;
+  border: 1px solid #c8c8c8;
+  background: #fff;
+  color: #111;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.invoice-header {
+  margin-block-end: 24px;
+  padding-block-end: 16px;
+  border-block-end: 2px solid #111;
+}
+
+.invoice-header h1 {
+  margin-block: 4px;
+  font-size: 28px;
+}
+
+.invoice-header p {
+  margin: 0;
+}
+
+.invoice-school {
+  font-weight: 700;
+}
+
+.invoice-dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-block: 24px;
+}
+
+.invoice-date dt {
+  font-weight: 700;
+}
+
+.invoice-date dd {
+  margin: 0;
+}
+
+.invoice-lines {
+  inline-size: 100%;
+  border-collapse: collapse;
+}
+
+.invoice-lines th,
+.invoice-lines td {
+  padding-block: 8px;
+  padding-inline: 12px;
+  border-block-end: 1px solid #c8c8c8;
+  text-align: start;
+}
+
+.invoice-lines .invoice-amount {
+  text-align: end;
+  white-space: nowrap;
+}
+
+.invoice-lines tfoot th,
+.invoice-lines tfoot td {
+  border-block-end: 0;
+  font-weight: 700;
+}
+
+@page {
+  size: A4;
+  margin: 18mm 16mm;
+}
+
+@media print {
+  .invoice {
+    max-inline-size: none;
+    padding: 0;
+    border: 0;
+  }
+}

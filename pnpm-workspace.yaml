@@ -1,3 +1,6 @@
+packages:
+  - web
+
 allowBuilds:
   cpu-features: false
   esbuild: false

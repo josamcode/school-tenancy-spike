@@ -1,6 +1,9 @@
 import { sql } from 'drizzle-orm';
 import {
   boolean,
+  char,
+  check,
+  jsonb,
   pgTable,
   primaryKey,
   text,
@@ -8,13 +11,27 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { currentTenant } from '../db/current-tenant.js';
+import { I18nText, isI18nText } from '../db/i18n-text.js';
 
-export const tenants = pgTable('tenants', {
-  id: uuid().primaryKey().defaultRandom(),
-  name: text().notNull(),
-  // An IANA name. Timestamps are stored in UTC; business dates use this.
-  timezone: text().notNull(),
+// ISO 3166-1 codes. Official Hijri month starts are kept per country.
+export const countries = pgTable('countries', {
+  code: char({ length: 2 }).primaryKey(),
 });
+
+export const tenants = pgTable(
+  'tenants',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    name: text().notNull(),
+    // Shown instead of name in a language it has.
+    nameI18n: jsonb('name_i18n').$type<I18nText>(),
+    // An IANA name. Timestamps are stored in UTC; business dates use this.
+    timezone: text().notNull(),
+    // Without one, Hijri dates are the calculated ones.
+    country: char({ length: 2 }).references(() => countries.code),
+  },
+  (t) => [check('tenants_name_i18n', isI18nText(t.nameI18n))],
+);
 
 export const users = pgTable(
   'users',

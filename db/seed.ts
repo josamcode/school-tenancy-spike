@@ -263,13 +263,241 @@ export const applications = {
   endToEnd: application(eventSchools.endToEnd, 1, 'Applicant End To End'),
 };
 
+// Calendar schools: finance on, two students each, one whose name is written
+// in Latin letters and one in Arabic. They are only read, except the last
+// three, which one test file each writes.
+const calendarSchool = (
+  n: number,
+  name: string,
+  nameAr: string | null,
+  country: string | null,
+  timezone: string,
+) => ({
+  id: `ca100000-0000-4000-8000-00000000000${n}`,
+  name,
+  nameI18n: nameAr === null ? null : { ar: nameAr, en: name },
+  country,
+  timezone,
+  students: {
+    latin: {
+      id: `ca100000-0000-4000-8000-0000000${n}0101`,
+      fullName: 'Omar Al Farsi',
+    },
+    arabic: {
+      id: `ca100000-0000-4000-8000-0000000${n}0102`,
+      fullName: 'ليلى حسن',
+    },
+  },
+});
+export const calendarSchools = {
+  dubai: calendarSchool(
+    1,
+    'Al Noor International School',
+    'مدرسة النور الدولية',
+    'AE',
+    'Asia/Dubai',
+  ),
+  riyadh: calendarSchool(
+    2,
+    'Al Faisal School',
+    'مدرسة الفيصل',
+    'SA',
+    'Asia/Riyadh',
+  ),
+  muscat: calendarSchool(
+    3,
+    'Al Bustan School',
+    'مدرسة البستان',
+    'OM',
+    'Asia/Muscat',
+  ),
+  manama: calendarSchool(
+    4,
+    'Al Hidd School',
+    'مدرسة الحد',
+    'BH',
+    'Asia/Bahrain',
+  ),
+  kuwait: calendarSchool(
+    5,
+    'Al Salam School',
+    'مدرسة السلام',
+    'KW',
+    'Asia/Kuwait',
+  ),
+  // No country and no translated name: the calculated calendar and the
+  // plain name are what is left.
+  noCountry: calendarSchool(6, 'Al Amal School', null, null, 'Asia/Dubai'),
+  rules: calendarSchool(7, 'Invoice Rules School', null, 'AE', 'Asia/Dubai'),
+  numbering: calendarSchool(
+    8,
+    'Invoice Numbering School',
+    null,
+    'AE',
+    'Asia/Dubai',
+  ),
+  numberingOther: calendarSchool(
+    9,
+    'Invoice Numbering Other School',
+    null,
+    'AE',
+    'Asia/Dubai',
+  ),
+};
+export const userCalendar = {
+  id: 'ca100000-0000-4000-8000-0000000000a1',
+  email: 'accountant@calendar.test',
+};
+// Staff in the Dubai school, so they hold students:read and nothing else.
+export const userCalendarStaff = {
+  id: 'ca100000-0000-4000-8000-0000000000a2',
+  email: 'teacher@calendar.test',
+};
+export const membershipsCalendar = Object.values(calendarSchools).map(
+  (school) => ({ tenantId: school.id, userId: userCalendar.id }),
+);
+export const staffMembershipsCalendar = [
+  {
+    tenantId: calendarSchools.dubai.id,
+    userId: userCalendarStaff.id,
+    role: 'staff',
+  },
+];
+
+// Test fixtures, not a record of real announcements. Oman starts Shawwal 1446
+// a day after the calculated calendar and Bahrain starts Shawwal 1447 a day
+// before it. Kuwait's row is a data-entry error: it would give Ramadan 1447
+// 31 days.
+export const hijriOverrides = [
+  { country: 'OM', hijriYear: 1446, hijriMonth: 10, startsOn: '2025-03-31' },
+  { country: 'BH', hijriYear: 1447, hijriMonth: 10, startsOn: '2026-03-19' },
+  { country: 'KW', hijriYear: 1447, hijriMonth: 10, startsOn: '2026-03-21' },
+];
+
+const calendarInvoice = (
+  school: (typeof calendarSchools)[keyof typeof calendarSchools],
+  k: number,
+  student: 'latin' | 'arabic',
+  amount: string,
+  currency: string,
+  issuedAt: string,
+  dueDate: string | null,
+  description: { ar: string; en: string } | null,
+) => ({
+  id: `${school.id.slice(0, -5)}${school.id.slice(-1)}020${k}`,
+  tenantId: school.id,
+  studentId: school.students[student].id,
+  amount,
+  currency,
+  issuedAt,
+  dueDate,
+  description,
+});
+const tuition = {
+  ar: 'الرسوم الدراسية للفصل الثالث',
+  en: 'Tuition fee, term 3',
+};
+const transport = { ar: 'رسوم النقل المدرسي', en: 'School transport fee' };
+// Each school's invoices are inserted in this order, so the first is number
+// 1. Two instants are shared: 2026-03-19T20:30Z is 20 March in Dubai and 19
+// March in Riyadh, and 2025-03-30T06:00Z is 30 March in Dubai and in Muscat.
+export const calendarInvoices = {
+  dubaiEid: calendarInvoice(
+    calendarSchools.dubai,
+    1,
+    'latin',
+    '12500.0000',
+    'AED',
+    '2026-03-19T20:30:00Z',
+    '2026-04-17',
+    tuition,
+  ),
+  dubaiPlain: calendarInvoice(
+    calendarSchools.dubai,
+    2,
+    'arabic',
+    '750.0000',
+    'AED',
+    '2025-03-30T06:00:00Z',
+    '2025-04-28',
+    transport,
+  ),
+  riyadhEid: calendarInvoice(
+    calendarSchools.riyadh,
+    1,
+    'latin',
+    '9800.0000',
+    'SAR',
+    '2026-03-19T20:30:00Z',
+    '2026-04-17',
+    tuition,
+  ),
+  muscatEid: calendarInvoice(
+    calendarSchools.muscat,
+    1,
+    'latin',
+    '450.2500',
+    'OMR',
+    '2025-03-30T06:00:00Z',
+    '2025-04-28',
+    tuition,
+  ),
+  manamaEid: calendarInvoice(
+    calendarSchools.manama,
+    1,
+    'latin',
+    '1234.5000',
+    'BHD',
+    '2026-03-19T09:00:00Z',
+    '2026-04-17',
+    tuition,
+  ),
+  kuwaitEid: calendarInvoice(
+    calendarSchools.kuwait,
+    1,
+    'latin',
+    '300.0000',
+    'KWD',
+    '2026-03-20T09:00:00Z',
+    null,
+    tuition,
+  ),
+  // Issued before the wrong override can reach, and due inside its reach.
+  kuwaitMixed: calendarInvoice(
+    calendarSchools.kuwait,
+    2,
+    'arabic',
+    '120.5000',
+    'KWD',
+    '2026-02-10T09:00:00Z',
+    '2026-03-20',
+    transport,
+  ),
+  noCountry: calendarInvoice(
+    calendarSchools.noCountry,
+    1,
+    'latin',
+    '100.0000',
+    'AED',
+    '2026-03-19T09:00:00Z',
+    null,
+    null,
+  ),
+};
+
 export async function seed(ownerUrl: string): Promise<void> {
   const client = new pg.Client({ connectionString: ownerUrl });
   await client.connect();
   try {
     await client.query('begin');
 
-    const schools = [
+    const schools: {
+      id: string;
+      name: string;
+      nameI18n?: { ar: string; en: string } | null;
+      country?: string | null;
+      timezone?: string;
+    }[] = [
       schoolA,
       schoolB,
       schoolC,
@@ -280,12 +508,33 @@ export async function seed(ownerUrl: string): Promise<void> {
       schoolH,
       ...Object.values(ledgerSchools),
       ...Object.values(eventSchools),
+      ...Object.values(calendarSchools),
     ];
     for (const school of schools) {
       await client.query(
-        `insert into tenants (id, name, timezone) values ($1, $2, 'Asia/Dubai')
+        `insert into tenants (id, name, timezone, country, name_i18n)
+         values ($1, $2, $3, $4, $5)
          on conflict do nothing`,
-        [school.id, school.name],
+        [
+          school.id,
+          school.name,
+          school.timezone ?? 'Asia/Dubai',
+          school.country ?? null,
+          school.nameI18n ?? null,
+        ],
+      );
+    }
+    for (const override of hijriOverrides) {
+      await client.query(
+        `insert into hijri_month_overrides (country, hijri_year, hijri_month, starts_on)
+         values ($1, $2, $3, $4)
+         on conflict do nothing`,
+        [
+          override.country,
+          override.hijriYear,
+          override.hijriMonth,
+          override.startsOn,
+        ],
       );
     }
     const users = [
@@ -301,6 +550,8 @@ export async function seed(ownerUrl: string): Promise<void> {
       userLedger,
       userEvents,
       userEventsStaff,
+      userCalendar,
+      userCalendarStaff,
     ];
     for (const user of users) {
       await client.query(
@@ -321,6 +572,7 @@ export async function seed(ownerUrl: string): Promise<void> {
       ...membershipsCDE,
       ...membershipsLedger,
       ...membershipsEvents,
+      ...membershipsCalendar,
     ].map((membership) => ({ ...membership, role: 'school_admin' }));
     const staff = [
       ...roleMemberships,
@@ -329,6 +581,7 @@ export async function seed(ownerUrl: string): Promise<void> {
         userId: userEventsStaff.id,
         role: 'staff',
       },
+      ...staffMembershipsCalendar,
     ];
     for (const membership of [...admins, ...staff]) {
       await client.query(
@@ -365,7 +618,15 @@ export async function seed(ownerUrl: string): Promise<void> {
       admissions?: boolean;
       baseCurrency?: string;
       students?: { id: string; fullName: string }[];
-      invoices?: typeof invoicesA;
+      invoices?: {
+        id: string;
+        studentId: string;
+        amount: string;
+        currency: string;
+        issuedAt?: string;
+        dueDate?: string | null;
+        description?: { ar: string; en: string } | null;
+      }[];
     }[] = [
       {
         school: schoolA,
@@ -400,6 +661,14 @@ export async function seed(ownerUrl: string): Promise<void> {
         admissions: school.admissions,
         baseCurrency: 'AED',
         students: [{ id: school.student, fullName: 'Rashid Al Marri' }],
+      })),
+      ...Object.values(calendarSchools).map((school) => ({
+        school,
+        finance: true,
+        students: Object.values(school.students),
+        invoices: Object.values(calendarInvoices).filter(
+          (invoice) => invoice.tenantId === school.id,
+        ),
       })),
     ];
     for (const {
@@ -438,10 +707,22 @@ export async function seed(ownerUrl: string): Promise<void> {
           [student.id, student.fullName],
         );
       }
+      // Only the owner can name issued_at. Left out, it is the clock.
       for (const invoice of invoices) {
         await client.query(
-          'insert into invoices (id, student_id, amount, currency) values ($1, $2, $3, $4) on conflict do nothing',
-          [invoice.id, invoice.studentId, invoice.amount, invoice.currency],
+          `insert into invoices
+             (id, student_id, amount, currency, issued_at, due_date, description)
+           values ($1, $2, $3, $4, $5, $6, $7)
+           on conflict do nothing`,
+          [
+            invoice.id,
+            invoice.studentId,
+            invoice.amount,
+            invoice.currency,
+            invoice.issuedAt ?? null,
+            invoice.dueDate ?? null,
+            invoice.description ?? null,
+          ],
         );
       }
     }

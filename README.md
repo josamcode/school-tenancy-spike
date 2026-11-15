@@ -17,11 +17,15 @@ It is short-lived code, not a product.
 
 ```bash
 pnpm install
+pnpm --filter web exec playwright install chromium
 cp .env.example .env
 pnpm db:up
 pnpm db:migrate
 pnpm db:seed
 ```
+
+The second command downloads the headless Chromium that prints invoices to
+PDF and runs the browser tests. Nothing is downloaded at runtime.
 
 `pnpm db:up` starts PostgreSQL 16 on `127.0.0.1:5440`. On first start it runs
 `db/bootstrap/roles.sql`, which creates four roles:
@@ -45,8 +49,11 @@ one school and holds a grant in another, and three more schools that single
 tests write to. For the ledger tests it adds four schools with finance on and
 AED as base currency, each written by one test file. For the event tests it
 adds schools that single tests write to, each with one student, and a few
-pending admission applications. Every school is in `Asia/Dubai`. The ids are
-in `db/seed.ts`.
+pending admission applications. For the calendar tests it adds schools in five
+countries and five timezones, with invoices issued at fixed instants, and
+three official Hijri month starts, which are test fixtures and not a record of
+real announcements. Every other school is in `Asia/Dubai` and has no country.
+The ids are in `db/seed.ts`.
 
 The passwords in `db/bootstrap/roles.sql` and `docker-compose.yml`, and every
 value in `.env.example` including `JWT_SECRET`, are local development values.
@@ -70,6 +77,19 @@ node --env-file=.env -e "import('jose').then(async ({ SignJWT }) => console.log(
 ```bash
 curl -H "Authorization: Bearer <token>" http://localhost:3100/schools/a0000000-0000-4000-8000-000000000001/students
 ```
+
+The web app is a demo of the proofs, not a product. One command runs it beside
+the API:
+
+```bash
+pnpm dev
+```
+
+The API listens on 3100 and the web app on 3200. `http://localhost:3200` goes
+to the Arabic app at `/ar`; `/en` is the English one. There is no identity
+provider yet, so in development `/ar/dev/sign-in` lists a few seed users and
+signs you in as one of them. It is labelled as a demo. Every screen then reads
+its data from the API as that user.
 
 Events are delivered by a second process, the worker:
 
@@ -274,6 +294,79 @@ addresses; there is no per-school limit on worker concurrency; delivery order
 is not guaranteed; nothing redrives a failed event; and nothing redrives a
 failed delivery.
 
+## How Arabic, RTL and Hijri work
+
+- **Languages.** Arabic first, English second. The language is the first
+  segment of the address and it alone sets `lang` and `dir` on the page. The
+  switch opens the same page in the other language.
+- **Layout.** The stylesheets use logical properties only (`margin-inline`,
+  `text-align: start`). A test reads every stylesheet and style prop in `web`
+  and rejects the words `left` and `right`, and four-value shorthands whose
+  two sides differ.
+- **Mixed direction.** Text that may be in the other script (a student's name,
+  an invoice number, an amount with its currency code) is in a `<bdi>`, so its
+  direction comes from its own letters. Tests measure where the glyphs are
+  drawn, in both languages, on the screen and in the PDF.
+- **Digits** are Western (123) in both languages.
+- **Translated content** is a JSONB value on its row, `{"ar": …, "en": …}`,
+  with one or both languages and nothing else: an invoice's description and a
+  school's `name_i18n`. A language that is missing falls back to the other,
+  and a school with no translated name shows `name`. Interface text is two
+  catalogs in `web/messages` with the same keys.
+- **Fonts.** Noto Sans and Noto Sans Arabic (SIL Open Font License) come from
+  npm packages and are served by the app. No page asks another host for
+  anything.
+- **The invoice** gets three things from the database when it is inserted,
+  whoever inserts it: a number that counts up per school (`INV-000042`, never
+  reset), the instant it was issued, and its issue date, which is that instant
+  in the school's timezone. The number is the school's highest plus one, read
+  under an advisory lock that every insert in that school takes. None of the
+  three can be changed afterwards.
+- **No back-dating.** The runtime role has column-level INSERT on invoices and
+  cannot name the number, `issued_at` or `issue_date`. Only the owner role can
+  supply `issued_at`, for an import of existing invoices. The issue date and
+  the number still come from the trigger.
+- **`GET /schools/:schoolId/invoices/:invoiceId`** needs `finance:read` and
+  follows the order of answers above, then 400 for a malformed invoice id and
+  404 for an invoice that is not in this school. It returns the amount at its
+  currency's decimals (three for BHD) and each date in both calendars.
+- **Dates.** Only Gregorian dates are stored. A Hijri date is worked out for
+  display, by the API, from the school's country: an official month start
+  first (`hijri_month_overrides`, per country, written by the owner), then the
+  calculated Umm al-Qura calendar from the runtime's ICU data. A school with
+  no country gets the calculated date.
+- **An override must fit.** It may move a month's start by at most two days,
+  and the month before it must still have 29 or 30 days. If it would have 28
+  or 31, the conversion throws and names the country, the month and the
+  override that is probably missing. Nothing is clamped silently. A month
+  after an override that is not announced yet starts where it was calculated,
+  moved only as far as 29 or 30 days need.
+- **A Hijri date that cannot be worked out does not stop the invoice.** The
+  stored date is Gregorian and the Hijri date is display only. When the
+  conversion throws, for a wrong override or any other reason, the route still
+  answers 200: that date keeps its Gregorian value and its `hijri` is `null`.
+  The screen and the PDF show the Gregorian date and "Hijri date unavailable"
+  in the page's language. The API logs the date, the country, the month, the
+  override and the reason. Other dates on the invoice and other countries are
+  not affected.
+- **The PDF** is the web app's own print page, printed by headless Chromium
+  (Playwright). The screen and the print page render one component with one
+  stylesheet and the same font files. The PDF route asks the API for the
+  invoice first, as the caller, and relays any refusal. The browser is then
+  sent only to this app's own address and is refused every other host.
+- **The demo sign-in** exists only in development. Its files are named
+  `page.dev.tsx` and `actions.dev.ts`, and `next.config.ts` makes `*.dev.tsx`
+  a route extension only when `NODE_ENV` is not production, so a production
+  build does not compile them. A test builds the app and finds no such route,
+  no trace of those files in the output, and a 404 at the address. The API has
+  no route that issues a token.
+
+Known limits: a headless browser belongs in a render worker of its own, not
+in the web server; nothing limits how many PDFs are printed at once; an
+override is checked when a date is converted, not when it is written; a Hijri
+day starts at midnight here, not at sunset; and an invoice has one
+description and one amount, with no lines.
+
 ## Test
 
 Tests start their own PostgreSQL 16 container with Testcontainers, so Docker
@@ -282,14 +375,23 @@ must be running. They do not use the database from `pnpm db:up`.
 The files under `test/events` run a dispatcher or a worker, which act on every
 school. They run after the other files, one at a time.
 
+The browser tests build the API and the web app, start a database of their
+own, and run both with Playwright: the production build of the web app, and a
+development server for the demo sign-in.
+
 ```bash
-pnpm test                            # all tests
+pnpm test                            # the API tests
 pnpm test test/health.e2e-spec.ts    # one file
+pnpm test:web                        # the web app's unit tests
+pnpm test:e2e                        # the browser tests
 pnpm typecheck
 pnpm lint
 ```
 
 ## Reset the local database
+
+A database that holds invoices from before they had numbers must be reset:
+the migration adds the number as a required column.
 
 ```bash
 docker compose down -v
