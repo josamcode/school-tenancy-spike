@@ -16,11 +16,13 @@ export default async function setup(project: TestProject) {
 
   const urlFor = (user: string, password: string) =>
     `postgres://${user}:${password}@${container.getHost()}:${container.getPort()}/${container.getDatabase()}`;
+  const ownerUrl = urlFor('app_owner', 'dev_only_owner');
 
-  await migrate(urlFor('app_owner', 'dev_only_owner'));
+  await migrate(ownerUrl);
 
-  // Tests only ever receive the runtime role's connection string.
+  // The app under test only ever receives the runtime role's connection string.
   project.provide('databaseUrl', urlFor('app_runtime', 'dev_only_runtime'));
+  project.provide('ownerDatabaseUrl', ownerUrl);
 
   return async () => {
     await container.stop();
@@ -30,5 +32,6 @@ export default async function setup(project: TestProject) {
 declare module 'vitest' {
   export interface ProvidedContext {
     databaseUrl: string;
+    ownerDatabaseUrl: string;
   }
 }
