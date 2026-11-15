@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { and, eq, sql } from 'drizzle-orm';
 import { tenantModules } from '../core/core.schema.js';
 import { TenantDb } from '../db/tenant-db.js';
@@ -9,6 +9,7 @@ import { EventRef } from './event-types.js';
 import { lockModuleShared } from './module-lock.js';
 
 const WEBHOOK = 'webhook';
+const MAX_ERROR_LENGTH = 2000;
 
 // Runs one events job. It decides once, at delivery, whether the module's
 // handler or the webhook takes the event, and records the decision in the
@@ -16,6 +17,8 @@ const WEBHOOK = 'webhook';
 // and follows it.
 @Injectable()
 export class EventRunner {
+  private readonly logger = new Logger(EventRunner.name);
+
   constructor(
     private readonly tenantDb: TenantDb,
     private readonly handlers: EventHandlers,
@@ -67,6 +70,28 @@ export class EventRunner {
     // event id and cannot be duplicated. If the send fails, this job fails
     // and is retried.
     if (owesDelivery) await this.queue.sendDelivery(ref);
+  }
+
+  // Runs for an events job that has used all its retries. The failure is
+  // written under the event's own school, once, so the school can see an
+  // event that nothing handled. If the event is not visible in the job's
+  // school there is no school to record it under: it is logged and this
+  // dead-letter job fails.
+  async recordFailure(ref: EventRef, error: string): Promise<void> {
+    try {
+      await this.tenantDb.runForEvent(ref, async (event) => {
+        await this.tenantDb.db.execute(sql`
+          insert into event_failures (event_id, error)
+          values (${event.id}, ${error.slice(0, MAX_ERROR_LENGTH)})
+          on conflict do nothing`);
+      });
+    } catch (cause) {
+      const reason = cause instanceof Error ? cause.message : String(cause);
+      this.logger.error(
+        `Could not record the failure of event ${ref.eventId} in school ${ref.tenantId} (${error}): ${reason}`,
+      );
+      throw cause;
+    }
   }
 
   private async decisionOf(eventId: string): Promise<string | undefined> {

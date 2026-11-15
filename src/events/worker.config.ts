@@ -7,6 +7,12 @@ export interface WorkerConfig {
   queuePrefix: string;
   pollingIntervalSeconds: number;
   dispatchIntervalMs: number;
+  events: {
+    // Retries of an events job after its first run, with exponential backoff.
+    // After the last one the event is recorded in event_failures.
+    retryLimit: number;
+    retryDelaySeconds: number;
+  };
   webhook: {
     // Retries after the first attempt, with exponential backoff.
     retryLimit: number;
@@ -29,6 +35,7 @@ export function workerConfigFromEnv(): WorkerConfig {
     queuePrefix: '',
     pollingIntervalSeconds: 2,
     dispatchIntervalMs: 1000,
+    events: { retryLimit: 5, retryDelaySeconds: 1 },
     webhook: { retryLimit: 5, retryDelaySeconds: 30, timeoutMs: 5000 },
   };
 }

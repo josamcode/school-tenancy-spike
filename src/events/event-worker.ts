@@ -4,6 +4,7 @@ import {
   Logger,
   OnApplicationShutdown,
 } from '@nestjs/common';
+import type { JobWithMetadata } from 'pg-boss';
 import { Dispatcher } from './dispatcher.js';
 import { EventQueue } from './event-queue.js';
 import { EventRunner } from './event-runner.js';
@@ -11,6 +12,15 @@ import { EventRef } from './event-types.js';
 import { WebhookSender } from './webhook-sender.js';
 import { WORKER_CONFIG } from './worker.config.js';
 import type { WorkerConfig } from './worker.config.js';
+
+// The dead-letter copy carries the output of the job's last run. For a handler
+// that threw, that is the serialised error.
+function lastError(job: { sourceOutput: object | null }): string {
+  const message = (job.sourceOutput as { message?: unknown } | null)?.message;
+  return typeof message === 'string' && message !== ''
+    ? message
+    : 'The job failed without reporting an error';
+}
 
 // Starts and stops the polling: the dispatcher's loop and one worker per
 // queue. A failing or slow delivery waits in its own queue and takes nothing
@@ -58,6 +68,12 @@ export class EventWorker implements OnApplicationShutdown {
     );
     await boss.work<EventRef>(names.dead, options, ([job]) =>
       this.sender.markFailed(job.data),
+    );
+    await boss.work(
+      names.failedEvents,
+      { ...options, includeMetadata: true },
+      ([job]: JobWithMetadata<EventRef>[]) =>
+        this.runner.recordFailure(job.data, lastError(job)),
     );
   }
 
