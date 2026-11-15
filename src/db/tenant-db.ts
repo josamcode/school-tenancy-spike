@@ -34,6 +34,13 @@ export class TenantDb {
   ): Promise<T> {
     const client = await this.pool.connect();
     const state = { ended: false };
+    let destroy = false;
+    // A checked-out client has no error listener, so a connection lost
+    // mid-transaction would otherwise crash the process.
+    const onConnectionError = () => {
+      destroy = true;
+    };
+    client.on('error', onConnectionError);
     // A released connection is reused by other requests, so a handle kept
     // past the end of its transaction must fail instead of querying it.
     const guarded = new Proxy(client, {
@@ -65,11 +72,18 @@ export class TenantDb {
       await client.query('commit');
       return result;
     } catch (error) {
-      await client.query('rollback');
+      try {
+        await client.query('rollback');
+      } catch {
+        // The connection may still be inside the transaction with the tenant
+        // set, so it must be destroyed, not handed to the next request.
+        destroy = true;
+      }
       throw error;
     } finally {
       state.ended = true;
-      client.release();
+      client.off('error', onConnectionError);
+      client.release(destroy);
     }
   }
 }
