@@ -319,6 +319,29 @@ describe('webhook delivery', () => {
     }, 80_000);
   });
 
+  describe('a school with finance off and no endpoint', () => {
+    it('keeps the event as a pending delivery whose attempts say why, until its retries end', async () => {
+      const ref = await emitEvent(pool, eventSchools.hookNoEndpoint);
+      await w.runner.handle(ref);
+
+      await expect(w.sender.deliver(ref)).rejects.toThrow(
+        'No webhook endpoint is configured',
+      );
+      expect(await deliveryStatus(pool, ref)).toBe('pending');
+      expect(await attemptsOf(pool, ref)).toEqual([
+        {
+          attemptNo: 1,
+          responseStatus: null,
+          error: 'No webhook endpoint is configured',
+        },
+      ]);
+
+      // What the dead-letter worker does once the job has used its retries.
+      await w.sender.markFailed(ref);
+      expect(await deliveryStatus(pool, ref)).toBe('failed');
+    });
+  });
+
   describe('a worker that dies after the routing commits and before the delivery job is sent', () => {
     const school = eventSchools.hookHandoff;
     let receiver: FakeReceiver;

@@ -224,6 +224,7 @@ export const eventSchools = {
   dispatch: eventSchool(27, 'Dispatch School', { finance: true }),
   endToEnd: eventSchool(28, 'End To End School', { admissions: true }),
   tablesOther: eventSchool(29, 'Event Tables Other School'),
+  hookNoEndpoint: eventSchool(30, 'Hook No Endpoint School'),
 };
 export const userEvents = {
   id: 'e5000000-0000-4000-8000-0000000000a1',
