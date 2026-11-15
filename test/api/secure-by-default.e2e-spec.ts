@@ -13,7 +13,7 @@ import {
 import { AppModule } from '../../src/app.module.js';
 import { DbModule } from '../../src/db/db.module.js';
 import { TenantDb } from '../../src/db/tenant-db.js';
-import { Core } from '../../src/entitlements/decorators.js';
+import { RequiresPermission } from '../../src/entitlements/decorators.js';
 import { registeredRoutes } from '../support/routes.js';
 import { tokenFor } from '../support/tokens.js';
 
@@ -68,8 +68,8 @@ class UndecoratedController {
     return this.tenantDb.db.execute(sql`select 1`);
   }
 
-  // Every school route must say whether it is core or a module, or the app does not start.
-  @Core()
+  // Every school route must declare the permission it needs, or the app does not start.
+  @RequiresPermission('students:read')
   @Get('schools/:schoolId/undecorated')
   async insideASchool() {
     const result = await this.tenantDb.db.execute<{ id: string }>(

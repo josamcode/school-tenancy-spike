@@ -6,8 +6,8 @@ import {
 } from '@nestjs/common';
 import { DiscoveryService, MetadataScanner, Reflector } from '@nestjs/core';
 import {
-  declarationOf,
   declarationProblem,
+  declaredPermission,
   RouteHandler,
 } from './decorators.js';
 
@@ -25,7 +25,7 @@ const join = (...parts: string[]) =>
     .filter(Boolean)
     .join('/');
 
-// Stops the app from starting when a route's module declaration is missing or wrong.
+// Stops the app from starting when a route's permission declaration is missing or wrong.
 @Injectable()
 export class RouteDeclarations implements OnApplicationBootstrap {
   constructor(
@@ -47,12 +47,16 @@ export class RouteDeclarations implements OnApplicationBootstrap {
           RequestMethod | undefined;
         if (method === undefined) continue;
 
-        const declaration = declarationOf(this.reflector, handler, controller);
+        const permission = declaredPermission(
+          this.reflector,
+          handler,
+          controller,
+        );
         for (const prefix of paths(Reflect.getMetadata(PATH, controller))) {
           for (const suffix of paths(Reflect.getMetadata(PATH, handler))) {
             const path = join(prefix, suffix);
             const hasSchool = path.split('/').includes(':schoolId');
-            const problem = declarationProblem(hasSchool, declaration);
+            const problem = declarationProblem(hasSchool, permission);
             if (problem) {
               problems.push(
                 `${RequestMethod[method]} ${path} (${controller.name}.${name}) ${problem}`,
