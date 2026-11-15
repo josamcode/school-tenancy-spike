@@ -20,18 +20,22 @@ pnpm install
 cp .env.example .env
 pnpm db:up
 pnpm db:migrate
+pnpm db:seed
 ```
 
 `pnpm db:up` starts PostgreSQL 16 on `127.0.0.1:5440`. On first start it runs
 `db/bootstrap/roles.sql`, which creates two roles:
 
-- `app_owner` owns the database and runs migrations.
-- `app_runtime` is used by the app and by every test. It is not a superuser,
+- `app_owner` owns the database, runs migrations and seeds data.
+- `app_runtime` is used by the app and by the tests. It is not a superuser,
   cannot bypass row-level security and owns no table.
 
-The passwords in `db/bootstrap/roles.sql`, `docker-compose.yml` and
-`.env.example` are local development values. They protect nothing and must not
-be reused anywhere else.
+`pnpm db:seed` adds two schools, one user in each, one user in both, and a few
+students and invoices. The ids are in `db/seed.ts`.
+
+The passwords in `db/bootstrap/roles.sql` and `docker-compose.yml`, and every
+value in `.env.example` including `JWT_SECRET`, are local development values.
+They protect nothing and must not be reused anywhere else.
 
 ## Run
 
@@ -39,6 +43,32 @@ be reused anywhere else.
 pnpm start:dev
 curl http://localhost:3100/health
 ```
+
+Routes under `/schools/:schoolId` need a bearer token: an HS256 JWT signed
+with `JWT_SECRET` that carries the user id as `sub` and an `exp`. To make one
+for the seeded user of the first school:
+
+```bash
+node --env-file=.env -e "import('jose').then(async ({ SignJWT }) => console.log(await new SignJWT().setProtectedHeader({ alg: 'HS256' }).setSubject(process.argv[1]).setExpirationTime('1h').sign(new TextEncoder().encode(process.env.JWT_SECRET))))" a0000000-0000-4000-8000-0000000000a1
+```
+
+```bash
+curl -H "Authorization: Bearer <token>" http://localhost:3100/schools/a0000000-0000-4000-8000-000000000001/students
+```
+
+## How tenant isolation works
+
+- Every table the runtime role can reach has row-level security enabled and
+  forced. Policies compare `tenant_id` with the `app.tenant_id` setting.
+- The token identifies the user only. The school comes from the path.
+- Each request runs in one transaction. It sets `app.user_id`, checks that the
+  user is a member of the school, and only then sets `app.tenant_id`. Both
+  settings end with the transaction.
+- Application code reaches the database only through that transaction. A call
+  outside it, or after it has ended, throws.
+- Core tables (`tenants`, `users`, `memberships`, `students`) are always on.
+  Module tables, starting with finance, may reference core tables but never
+  another module's tables.
 
 ## Test
 
@@ -58,4 +88,5 @@ pnpm lint
 docker compose down -v
 pnpm db:up
 pnpm db:migrate
+pnpm db:seed
 ```
