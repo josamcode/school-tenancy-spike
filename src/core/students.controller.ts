@@ -4,17 +4,11 @@ import {
   Controller,
   Get,
   Post,
-  UseGuards,
-  UseInterceptors,
 } from '@nestjs/common';
-import { AuthGuard } from '../auth/auth.guard.js';
 import { TenantDb } from '../db/tenant-db.js';
-import { TenantInterceptor } from '../db/tenant.interceptor.js';
 import { students } from './core.schema.js';
 
 @Controller('schools/:schoolId/students')
-@UseGuards(AuthGuard)
-@UseInterceptors(TenantInterceptor)
 export class StudentsController {
   constructor(private readonly tenantDb: TenantDb) {}
 

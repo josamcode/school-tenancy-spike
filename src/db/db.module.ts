@@ -1,8 +1,10 @@
 import { Inject, Module, OnApplicationShutdown } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import pg from 'pg';
 import { DbHealth } from './db-health.js';
 import { PG_POOL } from './pg-pool.js';
 import { TenantDb } from './tenant-db.js';
+import { TenantInterceptor } from './tenant.interceptor.js';
 
 // The pool is not exported: other modules reach the database through TenantDb.
 @Module({
@@ -17,6 +19,7 @@ import { TenantDb } from './tenant-db.js';
     },
     TenantDb,
     DbHealth,
+    { provide: APP_INTERCEPTOR, useClass: TenantInterceptor },
   ],
   exports: [TenantDb, DbHealth],
 })
