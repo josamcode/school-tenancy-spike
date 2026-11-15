@@ -16,7 +16,11 @@ export class StudentsController {
   @Get()
   @RequiresPermission('students:read')
   list() {
-    return this.tenantDb.db.select().from(students);
+    // The same order on every request: by name, then by id.
+    return this.tenantDb.db
+      .select()
+      .from(students)
+      .orderBy(students.fullName, students.id);
   }
 
   @Post()
