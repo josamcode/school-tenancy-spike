@@ -130,6 +130,17 @@ export const grants = [
   },
   { tenantId: schoolG.id, userId: userGrantG.id, permission: 'students:read' },
 ];
+// This user is staff in D and holds a students:create grant in H, so a check
+// that forgot the school on a grant would let them create students in D.
+// H is written only by the test that uses this grant.
+export const schoolH = {
+  id: 'ac000000-0000-4000-8000-000000000001',
+  name: 'Al Qamar School',
+};
+export const userStaffDGrantH = {
+  id: 'ac000000-0000-4000-8000-0000000000a1',
+  email: 'coordinator@alqamar.test',
+};
 // The group links A and B. Its admin has a grant on B only.
 export const group = {
   id: '91000000-0000-4000-8000-000000000001',

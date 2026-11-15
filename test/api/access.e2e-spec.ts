@@ -7,8 +7,10 @@ import {
   schoolA,
   schoolB,
   schoolC,
+  schoolD,
   schoolF,
   schoolG,
+  schoolH,
   studentsA,
   studentsB,
   studentsG,
@@ -18,6 +20,7 @@ import {
   userGroupAdmin,
   userMemberG,
   userStaffA,
+  userStaffDGrantH,
 } from '../../db/seed.js';
 import { AppModule } from '../../src/app.module.js';
 import { asOwner, ownerPool } from '../support/db.js';
@@ -65,6 +68,7 @@ describe('access to a school', () => {
       userGroupAdmin,
       userGrantG,
       userMemberG,
+      userStaffDGrantH,
     ];
     for (const user of users) tokens[user.id] = await tokenFor(user.id);
 
@@ -249,6 +253,27 @@ describe('access to a school', () => {
         .send({ fullName: `Admin Created ${Date.now()}` })
         .expect(201);
       expect(response.body).toMatchObject({ tenantId: schoolA.id });
+    });
+  });
+
+  // School H is written only by the first test below.
+  describe('a user who is staff in D and holds a students:create grant in H', () => {
+    it('can create a student in H, where the grant is', async () => {
+      const response = await http()
+        .post(students(schoolH))
+        .set(as(userStaffDGrantH))
+        .send({ fullName: `Grant Created ${Date.now()}` })
+        .expect(201);
+      expect(response.body).toMatchObject({ tenantId: schoolH.id });
+    });
+
+    it('gets 403 PERMISSION_DENIED on creating a student in D, where the grant does not apply', async () => {
+      const response = await http()
+        .post(students(schoolD))
+        .set(as(userStaffDGrantH))
+        .send({ fullName: 'Not Allowed' })
+        .expect(403);
+      expect(response.body).toEqual(permissionDenied);
     });
   });
 
