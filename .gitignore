@@ -3,3 +3,7 @@ dist/
 coverage/
 .env
 *.tsbuildinfo
+.next/
+next-env.d.ts
+test-results/
+playwright-report/
