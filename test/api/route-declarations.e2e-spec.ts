@@ -1,10 +1,10 @@
-import { Controller, Get, INestApplication, Post, Type } from '@nestjs/common';
+import { Controller, Get, INestApplication, Type } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types.js';
 import { schoolA, userA } from '../../db/seed.js';
 import { AppModule } from '../../src/app.module.js';
-import { Core, RequiresModule } from '../../src/entitlements/decorators.js';
+import { RequiresPermission } from '../../src/entitlements/decorators.js';
 import { RouteDeclarations } from '../../src/entitlements/route-declarations.js';
 import { tokenFor } from '../support/tokens.js';
 
@@ -19,19 +19,19 @@ class UndeclaredController {
   }
 }
 
-@Controller('schools/:schoolId/both')
-@Core()
-class DeclaresBothController {
-  @Post()
-  @RequiresModule('finance')
-  create() {
-    return {};
+// A cast is the only way to get past the compiler with an undeclared permission.
+@Controller('schools/:schoolId/transport')
+@RequiresPermission('transport:read' as never)
+class UnknownPermissionController {
+  @Get()
+  list() {
+    return [];
   }
 }
 
 @Controller('reports')
-@RequiresModule('finance')
-class ModuleWithoutSchoolController {
+@RequiresPermission('finance:read')
+class PermissionWithoutSchoolController {
   @Get()
   list() {
     return [];
@@ -41,13 +41,13 @@ class ModuleWithoutSchoolController {
 @Controller('schools/:schoolId/declared')
 class DeclaredPerHandlerController {
   @Get('core')
-  @Core()
+  @RequiresPermission('students:read')
   core() {
     return [];
   }
 
   @Get('finance')
-  @RequiresModule('finance')
+  @RequiresPermission('finance:read')
   finance() {
     return [];
   }
@@ -74,31 +74,34 @@ describe('route declarations at startup', () => {
     await app.close();
   });
 
-  it('lets an app start when every school route declares core or a module', async () => {
+  it('lets an app start when every school route declares a permission', async () => {
     const app = await boot(DeclaredPerHandlerController);
     await app.close();
   });
 
-  it('refuses to start when a school route declares neither', async () => {
+  it('refuses to start when a school route declares no permission', async () => {
     await expect(boot(UndeclaredController)).rejects.toThrow(
       'GET /schools/:schoolId/undeclared',
     );
   });
 
-  it('refuses to start when a school route declares both', async () => {
-    await expect(boot(DeclaresBothController)).rejects.toThrow(
-      'POST /schools/:schoolId/both',
+  it('refuses to start when a school route declares a permission that is not in the list', async () => {
+    await expect(boot(UnknownPermissionController)).rejects.toThrow(
+      'GET /schools/:schoolId/transport',
     );
   });
 
-  it('refuses to start when a route with no school declares a module', async () => {
-    await expect(boot(ModuleWithoutSchoolController)).rejects.toThrow(
+  it('refuses to start when a route with no school declares a permission', async () => {
+    await expect(boot(PermissionWithoutSchoolController)).rejects.toThrow(
       'GET /reports',
     );
   });
 
   it('names every offending route in one error', async () => {
-    const failed = boot(UndeclaredController, ModuleWithoutSchoolController);
+    const failed = boot(
+      UndeclaredController,
+      PermissionWithoutSchoolController,
+    );
     await expect(failed).rejects.toThrow('GET /schools/:schoolId/undeclared');
     await expect(failed).rejects.toThrow('GET /reports');
   });
