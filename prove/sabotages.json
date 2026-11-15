@@ -379,7 +379,7 @@
     "mustFail": [
       {
         "test": "routing an event to finance or to the webhook waits for a switch that has not committed, then follows what it committed",
-        "because": "expected [ 'finance' ] to deeply equal [ 'webhook' ]"
+        "because": "expected [ 'finance' ] to deeply equal []"
       }
     ]
   },
