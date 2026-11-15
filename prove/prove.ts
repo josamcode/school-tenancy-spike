@@ -397,8 +397,13 @@ function judge(sabotage: Sabotage, results: Results, output: string): Row {
     if (!result) problems.push(`did not run: ${test}`);
     else if (result.status === 'passed') problems.push(`passed: ${test}`);
     else if (!result.message.includes(because)) {
+      // The whole message: its first line does not say which assertion failed.
+      const lines = result.message
+        .split('\n')
+        .filter((line) => line.trim() !== '')
+        .map((line) => `  ${line.trimEnd()}`);
       problems.push(
-        `failed for another reason: ${test} (${firstLine(result.message)})`,
+        [`failed for another reason: ${test}`, ...lines].join('\n'),
       );
     } else failed.push(test);
   }
