@@ -28,7 +28,7 @@ export default async function Students({
   ]);
 
   return (
-    <Screen lang={lang} exchanges={[schools.exchange, students.exchange]}>
+    <Screen lang={lang} exchanges={[students.exchange, schools.exchange]}>
       <h1>{text['students.title']}</h1>
       {!students.ok ? (
         <ApiError

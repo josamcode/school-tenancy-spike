@@ -75,7 +75,7 @@ export default async function Permissions({
   return (
     <Screen
       lang={lang}
-      exchanges={[schools.exchange, ...rows.map((row) => row.exchange)]}
+      exchanges={[...rows.map((row) => row.exchange), schools.exchange]}
     >
       <h1>{text['permissions.title']}</h1>
       <p className="lead">{text['permissions.intro']}</p>

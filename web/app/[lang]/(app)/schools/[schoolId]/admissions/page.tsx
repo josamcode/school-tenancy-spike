@@ -20,7 +20,7 @@ export default async function Admissions({
   ]);
 
   return (
-    <Screen lang={lang} exchanges={[schools.exchange, applications.exchange]}>
+    <Screen lang={lang} exchanges={[applications.exchange, schools.exchange]}>
       <h1>{text['admissions.title']}</h1>
       {!applications.ok ? (
         <ApiError

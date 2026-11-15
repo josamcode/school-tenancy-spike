@@ -22,7 +22,7 @@ export default async function LedgerScreen({
     getMySchools(),
     getLedger(schoolId),
   ]);
-  const exchanges = [schools.exchange, ledger.exchange];
+  const exchanges = [ledger.exchange, schools.exchange];
   if (!ledger.ok) {
     return (
       <Screen lang={lang} exchanges={exchanges}>
@@ -166,6 +166,7 @@ export default async function LedgerScreen({
             return (
               <p
                 key={index}
+                className="note"
                 data-testid="fx-gain-loss"
                 data-kind={loss ? 'loss' : 'gain'}
               >

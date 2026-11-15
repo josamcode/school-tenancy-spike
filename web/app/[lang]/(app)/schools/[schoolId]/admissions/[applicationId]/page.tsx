@@ -34,10 +34,14 @@ export default async function ApplicationTrail({
     getApplications(schoolId),
     acceptanceOf(applicationId),
   ]);
-  const first = [...(posted ? [posted] : []), schools.exchange];
+  // The acceptance first, when it was made from this browser.
+  const first = posted ? [posted] : [];
   if (!applications.ok) {
     return (
-      <Screen lang={lang} exchanges={[...first, applications.exchange]}>
+      <Screen
+        lang={lang}
+        exchanges={[...first, applications.exchange, schools.exchange]}
+      >
         <h1>{text['admissions.title']}</h1>
         <ApiError
           status={applications.status}
@@ -50,7 +54,10 @@ export default async function ApplicationTrail({
   const application = applications.data.find((row) => row.id === applicationId);
   if (!application) {
     return (
-      <Screen lang={lang} exchanges={[...first, applications.exchange]}>
+      <Screen
+        lang={lang}
+        exchanges={[...first, applications.exchange, schools.exchange]}
+      >
         <h1>{text['admissions.title']}</h1>
         <ApiError status={404} problem={{}} lang={lang} />
       </Screen>
@@ -99,6 +106,7 @@ export default async function ApplicationTrail({
         applications.exchange,
         event.exchange,
         ...(ledger ? [ledger.exchange] : []),
+        schools.exchange,
       ]}
     >
       <AutoRefresh active={!settled} />

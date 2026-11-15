@@ -21,7 +21,7 @@ export default async function Invoices({
     getMySchools(),
     getInvoices(schoolId),
   ]);
-  const exchanges = [schools.exchange, result.exchange];
+  const exchanges = [result.exchange, schools.exchange];
   if (!result.ok) {
     return (
       <Screen lang={lang} exchanges={exchanges}>
