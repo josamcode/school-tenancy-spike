@@ -26,7 +26,7 @@ export class TenantDb {
     return transaction.db;
   }
 
-  // The only place that sets app.tenant_id, and only after the membership is confirmed.
+  // The only place that sets app.tenant_id, and only after the user's access to the school is confirmed.
   async run<T>(
     userId: string,
     schoolId: string,
@@ -56,11 +56,16 @@ export class TenantDb {
       await client.query("select set_config('app.user_id', $1, true)", [
         userId,
       ]);
-      const membership = await client.query(
-        'select 1 from memberships where user_id = $1 and tenant_id = $2',
+      // A membership or at least one grant in this school. Anything else,
+      // an unknown school included, gets the same answer.
+      const access = await client.query(
+        `select 1 from memberships where user_id = $1 and tenant_id = $2
+         union all
+         select 1 from grants where user_id = $1 and tenant_id = $2
+         limit 1`,
         [userId, schoolId],
       );
-      if (membership.rowCount !== 1) throw new ForbiddenException();
+      if (access.rowCount !== 1) throw new ForbiddenException();
       await client.query("select set_config('app.tenant_id', $1, true)", [
         schoolId,
       ]);
