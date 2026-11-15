@@ -273,12 +273,12 @@ passed  isolation.loose-policy            the school condition from the read sid
           failed as required: tenant isolation in the database with no tenant set students returns zero rows and no error
           failed as required: /schools/:schoolId/students concurrency 50 interleaved requests for A and B each see only their own rows
 ...
-FAILED  events.accept-no-row-lock         the row lock on the application while it is accepted
-          passed: an acceptance and its event share one transaction refuses a second accept that overlaps the first: one student, one event, one conflict
-...
+passed  web.sign-in-in-production         the rule that keeps the demo sign-in out of a production build
+          failed as required: the demo sign-in is served in development and is not a route of the production build
+          failed as required: the demo sign-in leaves no trace in the production build
 
-30 sabotages: 28 passed, 2 FAILED
-Time: 13 min 0 s
+30 sabotages: 30 passed, 0 FAILED
+Time: 18 min 19 s
 ```
 
 - `passed` means the tests caught the sabotage.
@@ -295,8 +295,7 @@ browser rows.
 one row. `--jobs=N` sets how many run at once.
 
 The output above is from a full run of the thirty rows on a Windows laptop,
-three at a time. It took 13 minutes, and 28 rows passed. The two that did not
-are described under [Known limits](#known-limits). It is not part of the checks on a pull request. It is a workflow
+three at a time. It took 18 minutes, and every row passed. It is not part of the checks on a pull request. It is a workflow
 that is started by hand (`.github/workflows/prove.yml`). What does run on
 every pull request is a test that every patch still applies to the code as
 it is (`test/prove/manifest.spec.ts`).
@@ -420,11 +419,6 @@ Each decision record lists its own. Together:
 
 - The sabotages are hand-picked. A protection without one is covered by its
   tests only.
-- Two rows are not caught on every run: `events.accept-no-row-lock` and
-  `events.route-without-module-lock`. Each of their tests gives a second
-  transaction 300 ms to reach the lock. On a loaded machine it can take
-  longer, and the test then passes without the lock. In the measured run
-  neither was caught; in earlier runs each was.
 - `pnpm prove` has run on Windows. The workflow that runs it on Linux can be
   started only once it is on the default branch.
 

@@ -19,7 +19,9 @@ the thing they refuse does not exist yet all look the same in a report.
   reason.** A refusal test must also show that the thing it refuses exists. A
   check over a set has a companion that fails when the set is empty.
 - **A test for a lock makes the two transactions overlap for certain.** It
-  holds one open, uncommitted, while the other runs.
+  holds one open, uncommitted, and goes on only when the other is seen
+  waiting for a lock the first one holds, or is refused at once by a lock
+  timeout. It never waits for a fixed time.
 - **A test that writes shared state has a school of its own.** Test files run
   in parallel against one database.
 - **Files that run a dispatcher or a worker run after the others, one at a
@@ -84,11 +86,6 @@ the thing they refuse does not exist yet all look the same in a report.
   protection, not every way.
 - The expected text of a failure is part of the manifest. A reworded
   assertion needs the manifest updated.
-- Two rows are not caught on every run: `events.accept-no-row-lock` and
-  `events.route-without-module-lock`. Each of their tests gives a second
-  transaction 300 ms to reach the lock, where the other lock tests make the
-  overlap certain. On a loaded machine the second transaction can be later
-  than that, and the test then passes without the lock.
 - The browser sabotages build both applications and use fixed ports, so they
   run one at a time and cannot run beside the browser tests.
 - The dependencies of the copies come from one offline install per run, made
