@@ -154,6 +154,28 @@ export const group = {
 };
 export const groupSchools = [schoolA.id, schoolB.id];
 
+// Ledger schools: finance on, base currency AED, two students each. Each one
+// is written by a single test file and read by nothing else.
+const ledgerSchool = (n: number, name: string) => ({
+  id: `1ed00000-0000-4000-8000-00000000000${n}`,
+  name,
+  students: {
+    s: `1ed00000-0000-4000-8000-0000000${n}0101`,
+    t: `1ed00000-0000-4000-8000-0000000${n}0102`,
+  },
+});
+export const ledgerSchools = {
+  scenario: ledgerSchool(1, 'Ledger Scenario School'),
+  guarantees: ledgerSchool(2, 'Ledger Guarantees School'),
+  concurrency: ledgerSchool(3, 'Ledger Concurrency School'),
+  fx: ledgerSchool(4, 'Ledger FX School'),
+  revaluation: ledgerSchool(5, 'Ledger Revaluation School'),
+};
+export const userLedger = {
+  id: '1ed00000-0000-4000-8000-0000000000a1',
+  email: 'bursar@ledger.test',
+};
+
 export async function seed(ownerUrl: string): Promise<void> {
   const client = new pg.Client({ connectionString: ownerUrl });
   await client.connect();
@@ -169,6 +191,7 @@ export async function seed(ownerUrl: string): Promise<void> {
       schoolF,
       schoolG,
       schoolH,
+      ...Object.values(ledgerSchools),
     ];
     for (const school of schools) {
       await client.query(
@@ -186,6 +209,7 @@ export async function seed(ownerUrl: string): Promise<void> {
       userGrantG,
       userMemberG,
       userStaffDGrantH,
+      userLedger,
     ];
     for (const user of users) {
       await client.query(
@@ -193,10 +217,15 @@ export async function seed(ownerUrl: string): Promise<void> {
         [user.id, user.email],
       );
     }
-    const admins = [...memberships, ...membershipsCDE].map((membership) => ({
-      ...membership,
-      role: 'school_admin',
+    const membershipsLedger = Object.values(ledgerSchools).map((school) => ({
+      tenantId: school.id,
+      userId: userLedger.id,
     }));
+    const admins = [
+      ...memberships,
+      ...membershipsCDE,
+      ...membershipsLedger,
+    ].map((membership) => ({ ...membership, role: 'school_admin' }));
     for (const membership of [...admins, ...roleMemberships]) {
       await client.query(
         'insert into memberships (tenant_id, user_id, role) values ($1, $2, $3) on conflict do nothing',
@@ -229,6 +258,7 @@ export async function seed(ownerUrl: string): Promise<void> {
     const tenantData: {
       school: { id: string };
       finance?: boolean;
+      baseCurrency?: string;
       students?: { id: string; fullName: string }[];
       invoices?: typeof invoicesA;
     }[] = [
@@ -250,10 +280,20 @@ export async function seed(ownerUrl: string): Promise<void> {
       { school: schoolF },
       { school: schoolG, students: studentsG },
       { school: schoolH },
+      ...Object.values(ledgerSchools).map((school) => ({
+        school,
+        finance: true,
+        baseCurrency: 'AED',
+        students: [
+          { id: school.students.s, fullName: 'Salem Al Hashmi' },
+          { id: school.students.t, fullName: 'Tala Al Zaabi' },
+        ],
+      })),
     ];
     for (const {
       school,
       finance,
+      baseCurrency,
       students = [],
       invoices = [],
     } of tenantData) {
@@ -265,6 +305,12 @@ export async function seed(ownerUrl: string): Promise<void> {
         await client.query(
           'insert into tenant_modules (module, enabled) values ($1, $2) on conflict do nothing',
           ['finance', finance],
+        );
+      }
+      if (baseCurrency !== undefined) {
+        await client.query(
+          'insert into finance_settings (base_currency) values ($1) on conflict do nothing',
+          [baseCurrency],
         );
       }
       for (const student of students) {

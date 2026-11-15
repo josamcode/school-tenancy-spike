@@ -36,7 +36,9 @@ module tests: one with finance switched off, one with no finance row, and one
 that a single test switches on and off. For the permission tests it adds a
 staff user, a group with an admin who holds one grant, a user who is staff in
 one school and holds a grant in another, and three more schools that single
-tests write to. The ids are in `db/seed.ts`.
+tests write to. For the ledger tests it adds four schools with finance on and
+AED as base currency, each written by one test file. The ids are in
+`db/seed.ts`.
 
 The passwords in `db/bootstrap/roles.sql` and `docker-compose.yml`, and every
 value in `.env.example` including `JWT_SECRET`, are local development values.
@@ -130,6 +132,56 @@ on conflict (tenant_id, module) do update set enabled = excluded.enabled;
   permissions and groups.
 - Known limit: a membership has exactly one role, and roles are the same for
   every school.
+
+## How the ledger works
+
+The ledger belongs to the finance module. It has no HTTP routes yet.
+
+- Amounts are `numeric(19,4)` with a currency. A line carries one signed
+  amount: positive is a debit and negative is a credit.
+- An account has exactly one currency, and a line must be in its account's
+  currency.
+- Three rules are enforced by the database, for every role that writes rows:
+  - every entry balances in each currency when its transaction commits;
+  - posted entries and lines cannot be updated, deleted or truncated, and
+    lines can only be added in the transaction that posts their entry;
+  - nothing posts into a locked period, and a locked period cannot be
+    reopened.
+- A correction is a new entry that negates the original line for line. An
+  entry can be reversed once.
+- Rounding follows the currency: a line cannot carry more decimals than its
+  currency has (2 for AED, SAR and QAR; 3 for BHD, KWD and OMR). Conversions
+  round half away from zero. A split hands its remainder out one minor unit at
+  a time from the first part, so the parts always sum to the total.
+- Currency conversion goes through one FX position per foreign currency: an
+  account in that currency and an account in the base currency. Each currency
+  therefore balances by itself. Revaluing a position sets its base side to
+  `-(foreign-side balance) x rate` and posts the difference to FX gain or
+  loss; closing a position is the same operation when the foreign side is
+  zero.
+- A conversion uses the school's latest rate on or before the entry date and
+  copies it onto the entry, so a later change to the rate table does not alter
+  history.
+- A revaluation uses both sides' balances as of its date: only lines whose
+  entry is dated on or before it. Entries dated later belong to a later
+  revaluation, even when they were posted first.
+- A revaluation takes an advisory lock for its school and currency
+  exclusively, and a conversion takes it shared, so two revaluations cannot
+  book the same difference twice and a conversion cannot slip in between the
+  read and the post.
+- Posting an invoice reads it under a share lock, so a change made while the
+  posting is open waits and is then refused.
+- The student sub-ledger is derived from the lines on control accounts, per
+  student and currency. Every line on a control account names a student.
+- A school's base currency is set once in `finance_settings` and cannot be
+  changed. Periods belong to financial years, cannot overlap, and several
+  years can be open at once.
+- Amounts in TypeScript are decimal strings and `BigInt` minor units
+  (`src/finance/money.ts`). There is no floating point.
+
+Known limits: the owner role owns the tables, so it can disable a trigger
+with DDL; and the database does not check that the two amounts of a conversion
+agree with the stored rate.
 
 ## Test
 
