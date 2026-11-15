@@ -109,6 +109,10 @@ It needs `DISPATCHER_DATABASE_URL` and `QUEUE_DATABASE_URL` as well as
 `DATABASE_URL`. The app needs neither and is never given them. On first start
 pg-boss creates its tables in the `pgboss` schema.
 
+Started this way the worker builds into `dist-worker` (`tsconfig.worker.json`)
+and the API's watcher into `dist`. Each deletes only its own directory before
+it builds, so the two can start together under `pnpm dev`.
+
 The fake receiver (`dev/receiver.ts`, `pnpm start:receiver`) stands in for a
 school's own system. It checks the signature of each webhook, answers 401
 when it does not match, and reports what it received at
@@ -393,9 +397,11 @@ a user would see, and the server response for each call the page made.
   every policy that looks at the school matches nothing. What is left to read
   is the caller's own memberships and grants. Each school's name is then read
   in a transaction of its own, through the same path as any school route,
-  which confirms the access again.
+  which confirms the access again. The same answer carries each school's
+  timezone. The API returns instants in UTC, and a screen shows them in the
+  school's timezone, with the zone named in the page's language.
 - **Isolation.** The students page lists the caller's schools and one
-  school's students. A school that is not theirs, and an id that names no
+  school's students, by name and then by id. A school that is not theirs, and an id that names no
   school, get the same plain 403.
 - **Modules and permissions** are one page: a real call to each of the
   school's four pages, with what the server answered. Where a module is off
