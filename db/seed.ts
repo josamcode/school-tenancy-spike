@@ -85,30 +85,145 @@ export const studentsC = [
   { id: 'c1000000-0000-4000-8000-000000000101', fullName: 'Noura Al Ketbi' },
 ];
 
+// Access fixtures. Every membership above has the role school_admin.
+// This user is staff in A and school_admin in C, so a check that forgot the
+// school would give them an admin's rights in A.
+export const userStaffA = {
+  id: 'a0000000-0000-4000-8000-0000000000a2',
+  email: 'teacher@alnoor.test',
+};
+// F is added to the group by one test. G is written by the revoke and remove
+// tests. Nothing else reads either of them.
+export const schoolF = {
+  id: 'f0000000-0000-4000-8000-000000000001',
+  name: 'Al Safa School',
+};
+export const schoolG = {
+  id: 'a9000000-0000-4000-8000-000000000001',
+  name: 'Al Wadi School',
+};
+export const studentsG = [
+  { id: 'a9000000-0000-4000-8000-000000000101', fullName: 'Hamad Al Nuaimi' },
+];
+export const userGroupAdmin = {
+  id: '90000000-0000-4000-8000-0000000000d1',
+  email: 'admin@northgroup.test',
+};
+export const userGrantG = {
+  id: 'a9000000-0000-4000-8000-0000000000a1',
+  email: 'auditor@alwadi.test',
+};
+export const userMemberG = {
+  id: 'a9000000-0000-4000-8000-0000000000a2',
+  email: 'teacher@alwadi.test',
+};
+// This user is staff in D and holds a students:create grant in H, so a check
+// that forgot the school on a grant would let them create students in D.
+// H is written only by the test that uses this grant.
+export const schoolH = {
+  id: 'ac000000-0000-4000-8000-000000000001',
+  name: 'Al Qamar School',
+};
+export const userStaffDGrantH = {
+  id: 'ac000000-0000-4000-8000-0000000000a1',
+  email: 'coordinator@alqamar.test',
+};
+export const roleMemberships = [
+  { tenantId: schoolA.id, userId: userStaffA.id, role: 'staff' },
+  { tenantId: schoolC.id, userId: userStaffA.id, role: 'school_admin' },
+  { tenantId: schoolG.id, userId: userMemberG.id, role: 'staff' },
+  { tenantId: schoolD.id, userId: userStaffDGrantH.id, role: 'staff' },
+];
+export const grants = [
+  {
+    tenantId: schoolB.id,
+    userId: userGroupAdmin.id,
+    permission: 'students:read',
+  },
+  { tenantId: schoolG.id, userId: userGrantG.id, permission: 'students:read' },
+  {
+    tenantId: schoolH.id,
+    userId: userStaffDGrantH.id,
+    permission: 'students:create',
+  },
+];
+// The group links A and B. Its admin has a grant on B only.
+export const group = {
+  id: '91000000-0000-4000-8000-000000000001',
+  name: 'North Schools Group',
+};
+export const groupSchools = [schoolA.id, schoolB.id];
+
 export async function seed(ownerUrl: string): Promise<void> {
   const client = new pg.Client({ connectionString: ownerUrl });
   await client.connect();
   try {
     await client.query('begin');
 
-    for (const school of [schoolA, schoolB, schoolC, schoolD, schoolE]) {
+    const schools = [
+      schoolA,
+      schoolB,
+      schoolC,
+      schoolD,
+      schoolE,
+      schoolF,
+      schoolG,
+      schoolH,
+    ];
+    for (const school of schools) {
       await client.query(
         'insert into tenants (id, name) values ($1, $2) on conflict do nothing',
         [school.id, school.name],
       );
     }
-    for (const user of [userA, userB, userBoth, userCDE]) {
+    const users = [
+      userA,
+      userB,
+      userBoth,
+      userCDE,
+      userStaffA,
+      userGroupAdmin,
+      userGrantG,
+      userMemberG,
+      userStaffDGrantH,
+    ];
+    for (const user of users) {
       await client.query(
         'insert into users (id, email) values ($1, $2) on conflict do nothing',
         [user.id, user.email],
       );
     }
-    for (const membership of [...memberships, ...membershipsCDE]) {
+    const admins = [...memberships, ...membershipsCDE].map((membership) => ({
+      ...membership,
+      role: 'school_admin',
+    }));
+    for (const membership of [...admins, ...roleMemberships]) {
       await client.query(
-        'insert into memberships (tenant_id, user_id) values ($1, $2) on conflict do nothing',
-        [membership.tenantId, membership.userId],
+        'insert into memberships (tenant_id, user_id, role) values ($1, $2, $3) on conflict do nothing',
+        [membership.tenantId, membership.userId, membership.role],
       );
     }
+    for (const grant of grants) {
+      await client.query(
+        'insert into grants (tenant_id, user_id, permission) values ($1, $2, $3) on conflict do nothing',
+        [grant.tenantId, grant.userId, grant.permission],
+      );
+    }
+
+    await client.query(
+      'insert into groups (id, name) values ($1, $2) on conflict do nothing',
+      [group.id, group.name],
+    );
+    for (const tenantId of groupSchools) {
+      await client.query(
+        'insert into group_schools (group_id, tenant_id) values ($1, $2) on conflict do nothing',
+        [group.id, tenantId],
+      );
+    }
+    await client.query(
+      'insert into group_admins (group_id, user_id) values ($1, $2) on conflict do nothing',
+      [group.id, userGroupAdmin.id],
+    );
 
     // finance: true or false writes a row; undefined leaves the school with no row.
     const tenantData: {
@@ -132,6 +247,9 @@ export async function seed(ownerUrl: string): Promise<void> {
       { school: schoolC, finance: false, students: studentsC },
       { school: schoolD },
       { school: schoolE },
+      { school: schoolF },
+      { school: schoolG, students: studentsG },
+      { school: schoolH },
     ];
     for (const {
       school,

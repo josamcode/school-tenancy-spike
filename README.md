@@ -33,7 +33,10 @@ pnpm db:seed
 `pnpm db:seed` adds two schools with finance on, one user in each, one user in
 both, and a few students and invoices. It also adds three schools for the
 module tests: one with finance switched off, one with no finance row, and one
-that a single test switches on and off. The ids are in `db/seed.ts`.
+that a single test switches on and off. For the permission tests it adds a
+staff user, a group with an admin who holds one grant, a user who is staff in
+one school and holds a grant in another, and three more schools that single
+tests write to. The ids are in `db/seed.ts`.
 
 The passwords in `db/bootstrap/roles.sql` and `docker-compose.yml`, and every
 value in `.env.example` including `JWT_SECRET`, are local development values.
@@ -85,13 +88,10 @@ curl -H "Authorization: Bearer <token>" http://localhost:3100/schools/a0000000-0
 - Module names live in the `modules` table, and `tenant_modules.module`
   references it, so a misspelt name cannot be stored. The list in
   `src/entitlements/modules.ts` must match it, and a test compares the two.
-- Every route with a `schoolId` declares `@Core()` or
-  `@RequiresModule('finance')`. If one declares neither, or both, the app does
-  not start and the error names the route.
-- The module check runs inside the tenant transaction, after the membership is
-  confirmed, and reads the table on every request. A member of a school with
-  the module off gets 403 with `code: "MODULE_DISABLED"`. Someone who is not a
-  member gets the plain membership 403 and learns nothing about the school.
+- The module check runs inside the tenant transaction, after the user's access
+  to the school is confirmed, and reads the table on every request. Someone
+  with access to a school that has the module off gets 403 with
+  `code: "MODULE_DISABLED"`.
 - Only `app_owner` can switch a module on or off. With `app.tenant_id` set to
   the school:
 
@@ -99,6 +99,37 @@ curl -H "Authorization: Bearer <token>" http://localhost:3100/schools/a0000000-0
 insert into tenant_modules (module, enabled) values ('finance', true)
 on conflict (tenant_id, module) do update set enabled = excluded.enabled;
 ```
+
+## How permissions work
+
+- A permission is an area and an action: `students:read`, `students:create`,
+  `finance:read`. Every area is declared in `src/entitlements/areas.ts` as
+  `core` or `module`. Nothing is core by default: a permission whose area is
+  not in that map does not compile.
+- Every route with a `schoolId` declares one permission with
+  `@RequiresPermission(...)`. The area decides whether the module check runs,
+  and the permission is what the user must hold. If such a route declares no
+  permission, or one that is not in the list, the app does not start and the
+  error names the route.
+- There are two ways to hold a permission in a school:
+  - a membership with a role, where `role_permissions` says what the role
+    holds: `school_admin` holds every permission and `staff` holds
+    `students:read`;
+  - a grant: a row of user, school and permission, for someone who is not a
+    member.
+- A group (`groups`, `group_schools`, `group_admins`) is an administrative
+  link only. No row in those tables gives access to a school.
+- The order of answers is fixed: 401 for no or bad token, 400 for a malformed
+  school id, the plain 403 for no membership and no grant in that school or an
+  unknown school, 403 `MODULE_DISABLED`, then 403 `PERMISSION_DENIED`. Someone
+  with no access to a school learns nothing about it.
+- Every check reads the database on each request, so removing a membership or
+  a grant takes effect on the next one.
+- Permissions and roles are catalog tables with foreign keys, so a misspelt
+  one cannot be stored. Only `app_owner` writes memberships, grants, role
+  permissions and groups.
+- Known limit: a membership has exactly one role, and roles are the same for
+  every school.
 
 ## Test
 

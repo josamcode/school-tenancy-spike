@@ -1,10 +1,10 @@
 import { Controller, Get } from '@nestjs/common';
 import { TenantDb } from '../db/tenant-db.js';
-import { RequiresModule } from '../entitlements/decorators.js';
+import { RequiresPermission } from '../entitlements/decorators.js';
 import { invoices } from './finance.schema.js';
 
 @Controller('schools/:schoolId/invoices')
-@RequiresModule('finance')
+@RequiresPermission('finance:read')
 export class InvoicesController {
   constructor(private readonly tenantDb: TenantDb) {}
 

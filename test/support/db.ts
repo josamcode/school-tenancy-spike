@@ -97,3 +97,22 @@ export async function asOwnerOf(
     await pool.end();
   }
 }
+
+// Commits as the owner with no tenant set, for provisioning tables.
+export async function asOwner(
+  fn: (client: pg.PoolClient) => Promise<void>,
+): Promise<void> {
+  const pool = ownerPool();
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+    await fn(client);
+    await client.query('commit');
+  } catch (error) {
+    await client.query('rollback');
+    throw error;
+  } finally {
+    client.release();
+    await pool.end();
+  }
+}

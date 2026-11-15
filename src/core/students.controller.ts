@@ -6,20 +6,21 @@ import {
   Post,
 } from '@nestjs/common';
 import { TenantDb } from '../db/tenant-db.js';
-import { Core } from '../entitlements/decorators.js';
+import { RequiresPermission } from '../entitlements/decorators.js';
 import { students } from './core.schema.js';
 
 @Controller('schools/:schoolId/students')
-@Core()
 export class StudentsController {
   constructor(private readonly tenantDb: TenantDb) {}
 
   @Get()
+  @RequiresPermission('students:read')
   list() {
     return this.tenantDb.db.select().from(students);
   }
 
   @Post()
+  @RequiresPermission('students:create')
   async create(@Body() body: { fullName?: unknown }) {
     const fullName = body?.fullName;
     if (typeof fullName !== 'string' || fullName.trim() === '') {

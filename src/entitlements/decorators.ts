@@ -1,47 +1,44 @@
 import { ExecutionContext, SetMetadata, Type } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { ModuleKey } from './modules.js';
+import { areaOf, isPermission, Permission } from './permissions.js';
 
-const CORE = 'entitlements:core';
-const MODULE = 'entitlements:module';
+const PERMISSION = 'entitlements:permission';
 
-// Core routes are always on and are never checked against tenant_modules.
-export const Core = () => SetMetadata(CORE, true);
-
-// The route answers only when the school has this module switched on.
-export const RequiresModule = (module: ModuleKey) =>
-  SetMetadata(MODULE, module);
-
-export interface RouteDeclaration {
-  core: boolean;
-  module?: ModuleKey;
-}
+// The one declaration a school route makes. The permission's area decides
+// whether the route is core or belongs to a module, and its action is what the
+// user must hold in that school.
+export const RequiresPermission = (permission: Permission) =>
+  SetMetadata(PERMISSION, permission);
 
 export type RouteHandler = ReturnType<ExecutionContext['getHandler']>;
 
-export function declarationOf(
+export function declaredPermission(
   reflector: Reflector,
   handler: RouteHandler,
   controller: Type,
-): RouteDeclaration {
-  const targets = [handler, controller];
-  return {
-    core: reflector.getAllAndOverride<boolean>(CORE, targets) === true,
-    module: reflector.getAllAndOverride<ModuleKey>(MODULE, targets),
-  };
+): unknown {
+  return reflector.getAllAndOverride<unknown>(PERMISSION, [
+    handler,
+    controller,
+  ]);
 }
 
 // Returns what is wrong with a route's declaration, or undefined when it is valid.
 export function declarationProblem(
   hasSchool: boolean,
-  { core, module }: RouteDeclaration,
+  permission: unknown,
 ): string | undefined {
   if (!hasSchool) {
-    return module
-      ? 'declares a module but has no schoolId, so the module cannot be checked'
-      : undefined;
+    return permission === undefined
+      ? undefined
+      : 'declares a permission but has no schoolId, so it cannot be checked';
   }
-  if (core && module) return 'declares both @Core() and @RequiresModule()';
-  if (!core && !module) return 'must declare @Core() or @RequiresModule()';
+  if (permission === undefined) return 'must declare @RequiresPermission()';
+  if (!isPermission(permission)) {
+    return `declares ${JSON.stringify(permission)}, which is not in the permission list`;
+  }
+  if (!areaOf(permission)) {
+    return `declares "${permission}", whose area is not declared as core or a module`;
+  }
   return undefined;
 }

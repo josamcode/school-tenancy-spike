@@ -23,6 +23,29 @@ export const users = pgTable(
   (t) => [uniqueIndex('users_email_lower_key').on(sql`lower(${t.email})`)],
 );
 
+// Catalogs. A misspelt permission or role cannot be stored anywhere.
+export const permissions = pgTable('permissions', {
+  key: text().primaryKey(),
+});
+
+export const roles = pgTable('roles', {
+  key: text().primaryKey(),
+});
+
+// Which permissions a role holds. Global: the same for every school.
+export const rolePermissions = pgTable(
+  'role_permissions',
+  {
+    role: text()
+      .notNull()
+      .references(() => roles.key),
+    permission: text()
+      .notNull()
+      .references(() => permissions.key),
+  },
+  (t) => [primaryKey({ columns: [t.role, t.permission] })],
+);
+
 export const memberships = pgTable(
   'memberships',
   {
@@ -33,8 +56,61 @@ export const memberships = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id),
+    role: text()
+      .notNull()
+      .references(() => roles.key),
   },
   (t) => [primaryKey({ columns: [t.tenantId, t.userId] })],
+);
+
+// One permission in one school for a user who need not be a member of it.
+export const grants = pgTable(
+  'grants',
+  {
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .default(currentTenant)
+      .references(() => tenants.id),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    permission: text()
+      .notNull()
+      .references(() => permissions.key),
+  },
+  (t) => [primaryKey({ columns: [t.tenantId, t.userId, t.permission] })],
+);
+
+// A group is an administrative link only. None of these rows gives access to a school.
+export const groups = pgTable('groups', {
+  id: uuid().primaryKey().defaultRandom(),
+  name: text().notNull(),
+});
+
+export const groupSchools = pgTable(
+  'group_schools',
+  {
+    groupId: uuid('group_id')
+      .notNull()
+      .references(() => groups.id),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id),
+  },
+  (t) => [primaryKey({ columns: [t.groupId, t.tenantId] })],
+);
+
+export const groupAdmins = pgTable(
+  'group_admins',
+  {
+    groupId: uuid('group_id')
+      .notNull()
+      .references(() => groups.id),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+  },
+  (t) => [primaryKey({ columns: [t.groupId, t.userId] })],
 );
 
 // Catalog of sellable modules. Core is always on and is never listed here.
