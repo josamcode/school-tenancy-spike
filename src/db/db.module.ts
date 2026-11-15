@@ -1,8 +1,12 @@
 import { Inject, Module, OnApplicationShutdown } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import pg from 'pg';
+import { DbHealth } from './db-health.js';
+import { PG_POOL } from './pg-pool.js';
+import { TenantDb } from './tenant-db.js';
+import { TenantInterceptor } from './tenant.interceptor.js';
 
-export const PG_POOL = Symbol('PG_POOL');
-
+// The pool is not exported: other modules reach the database through TenantDb.
 @Module({
   providers: [
     {
@@ -13,8 +17,11 @@ export const PG_POOL = Symbol('PG_POOL');
         return new pg.Pool({ connectionString });
       },
     },
+    TenantDb,
+    DbHealth,
+    { provide: APP_INTERCEPTOR, useClass: TenantInterceptor },
   ],
-  exports: [PG_POOL],
+  exports: [TenantDb, DbHealth],
 })
 export class DbModule implements OnApplicationShutdown {
   constructor(@Inject(PG_POOL) private readonly pool: pg.Pool) {}
