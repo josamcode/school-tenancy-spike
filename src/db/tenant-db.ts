@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
 import { drizzle, NodePgDatabase } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
+import type { EventRef, OutboxEvent } from '../events/event-types.js';
 import { PG_POOL } from './pg-pool.js';
 
 const ENDED = 'The tenant transaction has ended';
@@ -9,6 +10,14 @@ const ENDED = 'The tenant transaction has ended';
 interface TenantTransaction {
   db: NodePgDatabase;
   state: { ended: boolean };
+}
+
+interface EventRow {
+  id: string;
+  type: string;
+  payload: unknown;
+  actor_user_id: string;
+  created_at: Date;
 }
 
 @Injectable()
@@ -26,10 +35,74 @@ export class TenantDb {
     return transaction.db;
   }
 
-  // The only place that sets app.tenant_id, and only after the user's access to the school is confirmed.
-  async run<T>(
-    userId: string,
-    schoolId: string,
+  // For a request. Sets app.tenant_id only after the user's access to the
+  // school is confirmed.
+  run<T>(userId: string, schoolId: string, fn: () => Promise<T>): Promise<T> {
+    return this.transaction(async (client) => {
+      await client.query("select set_config('app.user_id', $1, true)", [
+        userId,
+      ]);
+      // A membership or at least one grant in this school. Anything else,
+      // an unknown school included, gets the same answer.
+      const access = await client.query(
+        `select 1 from memberships where user_id = $1 and tenant_id = $2
+         union all
+         select 1 from grants where user_id = $1 and tenant_id = $2
+         limit 1`,
+        [userId, schoolId],
+      );
+      if (access.rowCount !== 1) throw new ForbiddenException();
+      await client.query("select set_config('app.tenant_id', $1, true)", [
+        schoolId,
+      ]);
+    }, fn);
+  }
+
+  // For an event handler. The school comes from the job, and the event must
+  // then be visible under that school's row-level security: a job that names
+  // the wrong school finds nothing and fn never runs. The user is the one who
+  // caused the event, read from its row. Their membership is not checked
+  // again, because the event was authorised when it was committed.
+  runForEvent<T>(
+    ref: EventRef,
+    fn: (event: OutboxEvent) => Promise<T>,
+  ): Promise<T> {
+    let event: OutboxEvent;
+    return this.transaction(
+      async (client) => {
+        await client.query("select set_config('app.tenant_id', $1, true)", [
+          ref.tenantId,
+        ]);
+        const found = await client.query<EventRow>(
+          `select id, type, payload, actor_user_id, created_at
+             from outbox_events where id = $1`,
+          [ref.eventId],
+        );
+        if (found.rowCount !== 1) {
+          throw new Error(
+            `Event ${ref.eventId} is not in school ${ref.tenantId}`,
+          );
+        }
+        const row = found.rows[0];
+        await client.query("select set_config('app.user_id', $1, true)", [
+          row.actor_user_id,
+        ]);
+        event = {
+          id: row.id,
+          type: row.type,
+          payload: row.payload,
+          actorUserId: row.actor_user_id,
+          createdAt: row.created_at,
+        };
+      },
+      () => fn(event),
+    );
+  }
+
+  // The only code that opens a transaction with app.tenant_id set. enter
+  // decides the school and the user, and throws to refuse.
+  private async transaction<T>(
+    enter: (client: pg.PoolClient) => Promise<void>,
     fn: () => Promise<T>,
   ): Promise<T> {
     const client = await this.pool.connect();
@@ -53,23 +126,7 @@ export class TenantDb {
 
     try {
       await client.query('begin');
-      await client.query("select set_config('app.user_id', $1, true)", [
-        userId,
-      ]);
-      // A membership or at least one grant in this school. Anything else,
-      // an unknown school included, gets the same answer.
-      const access = await client.query(
-        `select 1 from memberships where user_id = $1 and tenant_id = $2
-         union all
-         select 1 from grants where user_id = $1 and tenant_id = $2
-         limit 1`,
-        [userId, schoolId],
-      );
-      if (access.rowCount !== 1) throw new ForbiddenException();
-      await client.query("select set_config('app.tenant_id', $1, true)", [
-        schoolId,
-      ]);
-
+      await enter(client);
       const result = await this.current.run(
         { db: drizzle(guarded), state },
         fn,

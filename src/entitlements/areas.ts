@@ -3,6 +3,7 @@
 export const AREAS = {
   students: 'core',
   finance: 'module',
+  admissions: 'module',
 } as const;
 
 export type Area = keyof typeof AREAS;

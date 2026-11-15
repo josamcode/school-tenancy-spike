@@ -50,6 +50,34 @@
       "when": 1794731485335,
       "tag": "0006_ledger_guarantees",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794736691850,
+      "tag": "0007_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794736694138,
+      "tag": "0008_event_guarantees",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794738890630,
+      "tag": "0009_event_failures",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794738896475,
+      "tag": "0010_event_failure_policies",
+      "breakpoints": true
     }
   ]
 }

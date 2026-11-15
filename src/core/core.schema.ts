@@ -12,6 +12,8 @@ import { currentTenant } from '../db/current-tenant.js';
 export const tenants = pgTable('tenants', {
   id: uuid().primaryKey().defaultRandom(),
   name: text().notNull(),
+  // An IANA name. Timestamps are stored in UTC; business dates use this.
+  timezone: text().notNull(),
 });
 
 export const users = pgTable(

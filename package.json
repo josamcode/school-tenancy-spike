@@ -12,6 +12,7 @@
     "build": "nest build",
     "start": "nest start --env-file .env",
     "start:dev": "nest start --watch --env-file .env",
+    "start:worker": "nest start --entryFile worker --env-file .env",
     "format": "prettier --write .",
     "lint": "oxlint --type-aware",
     "typecheck": "tsc --noEmit",
@@ -27,6 +28,7 @@
     "drizzle-orm": "^0.45.4",
     "jose": "^6.2.17",
     "pg": "^8.23.1",
+    "pg-boss": "12.38.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
   },

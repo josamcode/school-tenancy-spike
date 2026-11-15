@@ -24,11 +24,17 @@ pnpm db:seed
 ```
 
 `pnpm db:up` starts PostgreSQL 16 on `127.0.0.1:5440`. On first start it runs
-`db/bootstrap/roles.sql`, which creates two roles:
+`db/bootstrap/roles.sql`, which creates four roles:
 
 - `app_owner` owns the database, runs migrations and seeds data.
-- `app_runtime` is used by the app and by the tests. It is not a superuser,
-  cannot bypass row-level security and owns no table.
+- `app_runtime` is used by the app, by event handlers and by the tests. It is
+  not a superuser, cannot bypass row-level security and owns no table.
+- `app_dispatcher` is used by the worker to move events from the outbox to the
+  queue. It can read which event belongs to which school and nothing else.
+- `app_queue` is used by pg-boss. It works only inside the `pgboss` schema.
+
+The script runs only when the data directory is empty. A database created
+before a role was added must be reset, as described at the end of this file.
 
 `pnpm db:seed` adds two schools with finance on, one user in each, one user in
 both, and a few students and invoices. It also adds three schools for the
@@ -37,8 +43,10 @@ that a single test switches on and off. For the permission tests it adds a
 staff user, a group with an admin who holds one grant, a user who is staff in
 one school and holds a grant in another, and three more schools that single
 tests write to. For the ledger tests it adds four schools with finance on and
-AED as base currency, each written by one test file. The ids are in
-`db/seed.ts`.
+AED as base currency, each written by one test file. For the event tests it
+adds schools that single tests write to, each with one student, and a few
+pending admission applications. Every school is in `Asia/Dubai`. The ids are
+in `db/seed.ts`.
 
 The passwords in `db/bootstrap/roles.sql` and `docker-compose.yml`, and every
 value in `.env.example` including `JWT_SECRET`, are local development values.
@@ -62,6 +70,16 @@ node --env-file=.env -e "import('jose').then(async ({ SignJWT }) => console.log(
 ```bash
 curl -H "Authorization: Bearer <token>" http://localhost:3100/schools/a0000000-0000-4000-8000-000000000001/students
 ```
+
+Events are delivered by a second process, the worker:
+
+```bash
+pnpm start:worker
+```
+
+It needs `DISPATCHER_DATABASE_URL` and `QUEUE_DATABASE_URL` as well as
+`DATABASE_URL`. The app needs neither and is never given them. On first start
+pg-boss creates its tables in the `pgboss` schema.
 
 ## How tenant isolation works
 
@@ -183,10 +201,86 @@ Known limits: the owner role owns the tables, so it can disable a trigger
 with DDL; and the database does not check that the two amounts of a conversion
 agree with the stored rate.
 
+## How events work
+
+Accepting a student emits `student.accepted`. Finance charges a registration
+fee for it where finance is on; otherwise the school's own system receives it
+as a webhook. Every event goes to exactly one of the two.
+
+- **Emission.** `POST /schools/:schoolId/admissions/applications/:id/accept`
+  belongs to the admissions module and needs `admissions:accept`. It locks the
+  application, creates the student, marks the application accepted and writes
+  a row to `outbox_events`, all in the request's transaction. If the
+  acceptance rolls back there is no event; if it commits, the event is stored.
+  The runtime role can only append to the outbox, and names only the type and
+  the payload.
+- **Dispatch.** The worker's dispatcher copies committed events into pg-boss
+  (`src/events/dispatcher.ts`). It connects as `app_dispatcher`, the only role
+  that reads across schools. Its whole reach is four columns of the outbox:
+  the event id, the school id and two timestamps. It cannot read a payload. It
+  sends first and marks second, so a crash between the two sends the event
+  again under the same job id.
+- **The queue.** pg-boss runs as `app_queue` in a schema of its own. The
+  runtime role has no access to that schema, so the reach rule still holds. A
+  job carries an event id and a school id; the payload stays in the outbox.
+- **Handlers run as a request would.** `TenantDb.runForEvent` sets the school
+  from the job and then loads the event under that school's row-level
+  security. A job that names the wrong school finds nothing and no handler
+  runs. The user is the one who accepted the student, read from the event.
+- **Routing is decided at delivery, once.** A handler declares its event and
+  its module with `@HandlesEvent`; the worker refuses to start on a wrong
+  declaration, and a class without one is never called. The runner reads
+  whether the module is on under an advisory lock that a trigger on
+  `tenant_modules` also takes, so a switch and a routing decision wait for
+  each other. The decision is a row in `processed_events`, whose key allows
+  one handler per event, written in the same transaction as the handler's
+  effect. A switch after that changes nothing for that event.
+- **At least once.** A second delivery finds the row and does nothing, so an
+  event delivered twice charges once. That covers a worker that dies after the
+  effect commits and before its job is marked done.
+- **A handler that keeps failing.** An events job is retried with exponential
+  backoff: 5 retries, starting at 1 second. After the last one pg-boss copies
+  it to a dead-letter queue, whose worker writes one row to `event_failures`
+  in the event's school: the event id, the time and the last error. A school
+  with finance on and no registration fee, or an acceptance dated in a locked
+  period, ends there, with nothing in the ledger. If the event is not visible
+  in the job's school the failure is logged, the dead-letter job fails, and
+  nothing is recorded.
+- **The fee date** is the acceptance's date in the school's timezone
+  (`tenants.timezone`, an IANA name), not the day the worker runs.
+- **The webhook.** Each school has one endpoint and one secret
+  (`webhook_endpoints`). A delivery is a JSON body with three headers, after
+  the Standard Webhooks convention: `webhook-id` is the event id and is the
+  same on every retry, so it is the receiver's idempotency key;
+  `webhook-timestamp` is the send time in seconds; `webhook-signature` is
+  `v1,` and the base64 HMAC-SHA256 of `id.timestamp.body`. A receiver verifies
+  the signature, refuses a timestamp more than five minutes off and ignores
+  an id it has already processed.
+- **No transaction during the request.** The sender reads the endpoint in one
+  short transaction, sends with a timeout of 5 seconds, and records the
+  attempt in another. A slow endpoint holds no connection and no lock.
+- **Failures.** A failed attempt is retried by pg-boss with exponential
+  backoff: 5 retries, starting at 30 seconds. After the last one the job goes
+  to a dead-letter queue whose worker marks the delivery `failed`. Each
+  delivery is its own job in its own queue, so it holds up no other school and
+  no finance handler. Every attempt is a row in `webhook_attempts`.
+- **Handoff.** The routing transaction commits before the delivery job is
+  sent. Every run of an events job whose delivery is still pending sends that
+  job again, keyed by the event id, and completes only after the send.
+
+Known limits: the webhook secret is stored in plain text and the runtime role
+can read it within its school; endpoint URLs are not checked against internal
+addresses; there is no per-school limit on worker concurrency; delivery order
+is not guaranteed; nothing redrives a failed event; and nothing redrives a
+failed delivery.
+
 ## Test
 
 Tests start their own PostgreSQL 16 container with Testcontainers, so Docker
 must be running. They do not use the database from `pnpm db:up`.
+
+The files under `test/events` run a dispatcher or a worker, which act on every
+school. They run after the other files, one at a time.
 
 ```bash
 pnpm test                            # all tests

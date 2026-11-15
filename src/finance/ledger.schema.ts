@@ -221,7 +221,7 @@ export const ledgerEntries = pgTable(
       .where(sql`${t.kind} = 'invoice'`),
     check(
       'ledger_entries_kind',
-      sql`${t.kind} in ('invoice', 'discount', 'late_fee', 'payment', 'refund', 'fx_conversion', 'fx_revaluation', 'reversal', 'adjustment')`,
+      sql`${t.kind} in ('invoice', 'discount', 'late_fee', 'payment', 'refund', 'fx_conversion', 'fx_revaluation', 'reversal', 'adjustment', 'registration_fee')`,
     ),
     check(
       'ledger_entries_fx',
@@ -262,5 +262,41 @@ export const ledgerLines = pgTable(
       foreignColumns: [students.tenantId, students.id],
     }),
     check('ledger_lines_not_zero', sql`${t.amount} <> 0`),
+  ],
+);
+
+// What a school charges when it accepts a student, and the accounts the
+// charge is posted to. Both accounts are in the currency of the fee.
+export const registrationFees = pgTable(
+  'registration_fees',
+  {
+    tenantId: tenantId()
+      .primaryKey()
+      .references(() => tenants.id),
+    amount: numeric({ precision: 19, scale: 4 }).notNull(),
+    currency: currency().notNull(),
+    receivableAccountId: uuid('receivable_account_id').notNull(),
+    incomeAccountId: uuid('income_account_id').notNull(),
+  },
+  (t) => [
+    foreignKey({
+      name: 'registration_fees_receivable_fk',
+      columns: [t.tenantId, t.receivableAccountId, t.currency],
+      foreignColumns: [
+        ledgerAccounts.tenantId,
+        ledgerAccounts.id,
+        ledgerAccounts.currency,
+      ],
+    }),
+    foreignKey({
+      name: 'registration_fees_income_fk',
+      columns: [t.tenantId, t.incomeAccountId, t.currency],
+      foreignColumns: [
+        ledgerAccounts.tenantId,
+        ledgerAccounts.id,
+        ledgerAccounts.currency,
+      ],
+    }),
+    check('registration_fees_positive', sql`${t.amount} > 0`),
   ],
 );

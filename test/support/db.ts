@@ -10,6 +10,18 @@ export function ownerPool(): pg.Pool {
   return new pg.Pool({ connectionString: inject('ownerDatabaseUrl'), max: 1 });
 }
 
+// The two roles the worker uses besides the runtime role.
+export function dispatcherPool(): pg.Pool {
+  return new pg.Pool({
+    connectionString: inject('dispatcherDatabaseUrl'),
+    max: 2,
+  });
+}
+
+export function queuePool(): pg.Pool {
+  return new pg.Pool({ connectionString: inject('queueDatabaseUrl'), max: 1 });
+}
+
 export interface Scope {
   userId?: string;
   tenantId?: string;
@@ -154,3 +166,21 @@ export const refused = (message: string) => ({
 });
 export const exclusionViolation = { code: '23P01' };
 export const checkViolation = { code: '23514' };
+export const notNullViolation = { code: '23502' };
+
+// Polls until check returns something truthy, and fails after the timeout.
+export async function until<T>(
+  check: () => Promise<T> | T,
+  timeoutMs = 20_000,
+): Promise<NonNullable<T>> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const value = await check();
+    if (value) return value;
+    if (Date.now() > deadline) throw new Error('Timed out waiting');
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+}
+
+export const sleep = (ms: number) =>
+  new Promise((resolve) => setTimeout(resolve, ms));
