@@ -480,7 +480,13 @@ export async function seed(ownerUrl: string): Promise<void> {
   try {
     await client.query('begin');
 
-    const schools = [
+    const schools: {
+      id: string;
+      name: string;
+      nameI18n?: { ar: string; en: string } | null;
+      country?: string | null;
+      timezone?: string;
+    }[] = [
       schoolA,
       schoolB,
       schoolC,
@@ -491,12 +497,33 @@ export async function seed(ownerUrl: string): Promise<void> {
       schoolH,
       ...Object.values(ledgerSchools),
       ...Object.values(eventSchools),
+      ...Object.values(calendarSchools),
     ];
     for (const school of schools) {
       await client.query(
-        `insert into tenants (id, name, timezone) values ($1, $2, 'Asia/Dubai')
+        `insert into tenants (id, name, timezone, country, name_i18n)
+         values ($1, $2, $3, $4, $5)
          on conflict do nothing`,
-        [school.id, school.name],
+        [
+          school.id,
+          school.name,
+          school.timezone ?? 'Asia/Dubai',
+          school.country ?? null,
+          school.nameI18n ?? null,
+        ],
+      );
+    }
+    for (const override of hijriOverrides) {
+      await client.query(
+        `insert into hijri_month_overrides (country, hijri_year, hijri_month, starts_on)
+         values ($1, $2, $3, $4)
+         on conflict do nothing`,
+        [
+          override.country,
+          override.hijriYear,
+          override.hijriMonth,
+          override.startsOn,
+        ],
       );
     }
     const users = [
@@ -512,6 +539,8 @@ export async function seed(ownerUrl: string): Promise<void> {
       userLedger,
       userEvents,
       userEventsStaff,
+      userCalendar,
+      userCalendarStaff,
     ];
     for (const user of users) {
       await client.query(
@@ -532,6 +561,7 @@ export async function seed(ownerUrl: string): Promise<void> {
       ...membershipsCDE,
       ...membershipsLedger,
       ...membershipsEvents,
+      ...membershipsCalendar,
     ].map((membership) => ({ ...membership, role: 'school_admin' }));
     const staff = [
       ...roleMemberships,
@@ -540,6 +570,7 @@ export async function seed(ownerUrl: string): Promise<void> {
         userId: userEventsStaff.id,
         role: 'staff',
       },
+      ...staffMembershipsCalendar,
     ];
     for (const membership of [...admins, ...staff]) {
       await client.query(
@@ -576,7 +607,15 @@ export async function seed(ownerUrl: string): Promise<void> {
       admissions?: boolean;
       baseCurrency?: string;
       students?: { id: string; fullName: string }[];
-      invoices?: typeof invoicesA;
+      invoices?: {
+        id: string;
+        studentId: string;
+        amount: string;
+        currency: string;
+        issuedAt?: string;
+        dueDate?: string | null;
+        description?: { ar: string; en: string } | null;
+      }[];
     }[] = [
       {
         school: schoolA,
@@ -611,6 +650,14 @@ export async function seed(ownerUrl: string): Promise<void> {
         admissions: school.admissions,
         baseCurrency: 'AED',
         students: [{ id: school.student, fullName: 'Rashid Al Marri' }],
+      })),
+      ...Object.values(calendarSchools).map((school) => ({
+        school,
+        finance: true,
+        students: Object.values(school.students),
+        invoices: Object.values(calendarInvoices).filter(
+          (invoice) => invoice.tenantId === school.id,
+        ),
       })),
     ];
     for (const {
@@ -649,10 +696,22 @@ export async function seed(ownerUrl: string): Promise<void> {
           [student.id, student.fullName],
         );
       }
+      // Only the owner can name issued_at. Left out, it is the clock.
       for (const invoice of invoices) {
         await client.query(
-          'insert into invoices (id, student_id, amount, currency) values ($1, $2, $3, $4) on conflict do nothing',
-          [invoice.id, invoice.studentId, invoice.amount, invoice.currency],
+          `insert into invoices
+             (id, student_id, amount, currency, issued_at, due_date, description)
+           values ($1, $2, $3, $4, $5, $6, $7)
+           on conflict do nothing`,
+          [
+            invoice.id,
+            invoice.studentId,
+            invoice.amount,
+            invoice.currency,
+            invoice.issuedAt ?? null,
+            invoice.dueDate ?? null,
+            invoice.description ?? null,
+          ],
         );
       }
     }
