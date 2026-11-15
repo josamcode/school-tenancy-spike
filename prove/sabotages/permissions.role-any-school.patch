@@ -1,0 +1,10 @@
+--- a/src/db/tenant.interceptor.ts
++++ b/src/db/tenant.interceptor.ts
+@@ -92,7 +92,6 @@
+         from memberships m
+         join role_permissions rp on rp.role = m.role
+        where m.user_id = ${userId}
+-         and m.tenant_id = ${schoolId}
+          and rp.permission = ${permission}
+       union all
+       select 1

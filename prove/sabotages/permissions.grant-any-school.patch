@@ -1,0 +1,10 @@
+--- a/src/db/tenant.interceptor.ts
++++ b/src/db/tenant.interceptor.ts
+@@ -98,7 +98,6 @@
+       select 1
+         from grants g
+        where g.user_id = ${userId}
+-         and g.tenant_id = ${schoolId}
+          and g.permission = ${permission}
+       limit 1
+     `);

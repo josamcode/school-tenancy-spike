@@ -1,0 +1,10 @@
+--- a/src/calendar/hijri-calendar.ts
++++ b/src/calendar/hijri-calendar.ts
+@@ -65,6 +65,6 @@
+              starts_on::text as "startsOn"
+         from hijri_month_overrides
+        where country = ${country}`);
+-    return { country, overrides: overrides.rows };
++    return { country, overrides: [] };
+   }
+ }

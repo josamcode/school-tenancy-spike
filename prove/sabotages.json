@@ -1,0 +1,531 @@
+[
+  {
+    "id": "isolation.force-rls",
+    "removes": "FORCE ROW LEVEL SECURITY on students, so the table's owner is no longer bound by its policies",
+    "patch": "isolation.force-rls.patch",
+    "targets": ["db/migrations/0001_row_level_security.sql"],
+    "lane": "api",
+    "files": ["test/db/reach.spec.ts"],
+    "mustFail": [
+      {
+        "test": "what the runtime role can reach is only ordinary tables with row-level security enabled and forced and a policy",
+        "because": "expected [ { schema: 'public'"
+      }
+    ]
+  },
+  {
+    "id": "isolation.loose-policy",
+    "removes": "the school condition from the read side of the students policy",
+    "patch": "isolation.loose-policy.patch",
+    "targets": ["db/migrations/0001_row_level_security.sql"],
+    "lane": "api",
+    "files": ["test/db/isolation.spec.ts", "test/api/students.e2e-spec.ts"],
+    "mustFail": [
+      {
+        "test": "tenant isolation in the database reads with no tenant filter in the query school A sees only its own students",
+        "because": "expected false to be true"
+      },
+      {
+        "test": "tenant isolation in the database with no tenant set students returns zero rows and no error",
+        "because": "to deeply equal []"
+      },
+      {
+        "test": "/schools/:schoolId/students concurrency 50 interleaved requests for A and B each see only their own rows",
+        "because": "expected false to be true"
+      }
+    ]
+  },
+  {
+    "id": "isolation.no-membership-check",
+    "removes": "the refusal when the user has no membership and no grant in the school, before the school is set",
+    "patch": "isolation.no-membership-check.patch",
+    "targets": ["src/db/tenant-db.ts"],
+    "lane": "api",
+    "files": ["test/db/tenant-db.spec.ts", "test/api/entitlements.e2e-spec.ts"],
+    "mustFail": [
+      {
+        "test": "TenantDb refuses a school the user is not a member of and never runs the callback",
+        "because": "instead of rejecting"
+      },
+      {
+        "test": "module entitlements a user who is not a member gets the plain membership 403 on invoices, even when finance is off for that school",
+        "because": "expected { statusCode: 403"
+      }
+    ]
+  },
+  {
+    "id": "isolation.single-column-fk",
+    "removes": "tenant_id from the foreign key between an invoice and its student",
+    "patch": "isolation.single-column-fk.patch",
+    "targets": ["db/migrations/0000_tables.sql"],
+    "lane": "api",
+    "files": ["test/db/constraints.spec.ts"],
+    "mustFail": [
+      {
+        "test": "constraints on tenant-owned tables every foreign key between two tenant-owned tables includes tenant_id on both sides",
+        "because": "to deeply equal []"
+      },
+      {
+        "test": "constraints on tenant-owned tables rejects an invoice in school A that points at a student of school B",
+        "because": "expected null to match object { code: '23503' }"
+      }
+    ]
+  },
+  {
+    "id": "reach.table-without-rls",
+    "removes": "row-level security from a table the runtime role can reach: a new table is granted to it with none",
+    "patch": "reach.table-without-rls.patch",
+    "targets": ["db/migrations/0013_admissions_read.sql"],
+    "lane": "api",
+    "files": ["test/db/reach.spec.ts"],
+    "mustFail": [
+      {
+        "test": "what the runtime role can reach is only ordinary tables with row-level security enabled and forced and a policy",
+        "because": "expected [ { schema: 'public'"
+      }
+    ]
+  },
+  {
+    "id": "reach.other-schema",
+    "removes": "the rule that the runtime role reaches nothing outside the public schema: it is granted the migration tool's schema",
+    "patch": "reach.other-schema.patch",
+    "targets": ["db/migrations/0013_admissions_read.sql"],
+    "lane": "api",
+    "files": ["test/db/reach.spec.ts"],
+    "mustFail": [
+      {
+        "test": "what the runtime role can reach is nothing outside the public schema",
+        "because": "schema: 'drizzle'"
+      },
+      {
+        "test": "what the runtime role can reach has no access to any other schema",
+        "because": "nspname: 'drizzle'"
+      }
+    ]
+  },
+  {
+    "id": "auth.guard-not-global",
+    "removes": "the global registration of the token guard, so a route is guarded only if it says so",
+    "patch": "auth.guard-not-global.patch",
+    "targets": ["src/auth/auth.module.ts"],
+    "lane": "api",
+    "files": ["test/api/secure-by-default.e2e-spec.ts"],
+    "mustFail": [
+      {
+        "test": "every registered route returns 401 without a token, except exactly GET /health",
+        "because": "to deeply equal [ 'GET /health' ]"
+      }
+    ]
+  },
+  {
+    "id": "modules.no-module-check",
+    "removes": "the module check before a module's route runs",
+    "patch": "modules.no-module-check.patch",
+    "targets": ["src/db/tenant.interceptor.ts"],
+    "lane": "api",
+    "files": ["test/api/entitlements.e2e-spec.ts"],
+    "mustFail": [
+      {
+        "test": "module entitlements a school with finance switched off answers a member with 403 MODULE_DISABLED on invoices",
+        "because": "expected 403 \"Forbidden\", got 200 \"OK\""
+      },
+      {
+        "test": "module entitlements a school with no row for finance answers a member with 403 MODULE_DISABLED on invoices",
+        "because": "expected 403 \"Forbidden\", got 200 \"OK\""
+      }
+    ]
+  },
+  {
+    "id": "modules.undeclared-route",
+    "removes": "the permission declaration of one school route",
+    "patch": "modules.undeclared-route.patch",
+    "targets": ["src/core/students.controller.ts"],
+    "lane": "api",
+    "files": ["test/api/route-declarations.e2e-spec.ts"],
+    "mustFail": [
+      {
+        "test": "route declarations at startup lets the real app start",
+        "because": "GET /schools/:schoolId/students (StudentsController.list)"
+      }
+    ]
+  },
+  {
+    "id": "permissions.role-any-school",
+    "removes": "the school condition from the role branch of the permission check",
+    "patch": "permissions.role-any-school.patch",
+    "targets": ["src/db/tenant.interceptor.ts"],
+    "lane": "api",
+    "files": ["test/api/access.e2e-spec.ts"],
+    "mustFail": [
+      {
+        "test": "access to a school a staff member gets 403 PERMISSION_DENIED on creating a student, although they are an admin of another school",
+        "because": "expected 403 \"Forbidden\", got 201 \"Created\""
+      }
+    ]
+  },
+  {
+    "id": "permissions.grant-any-school",
+    "removes": "the school condition from the grants branch of the permission check",
+    "patch": "permissions.grant-any-school.patch",
+    "targets": ["src/db/tenant.interceptor.ts"],
+    "lane": "api",
+    "files": ["test/api/access.e2e-spec.ts"],
+    "mustFail": [
+      {
+        "test": "access to a school a user who is staff in D and holds a students:create grant in H gets 403 PERMISSION_DENIED on creating a student in D, where the grant does not apply",
+        "because": "expected 403 \"Forbidden\", got 201 \"Created\""
+      }
+    ]
+  },
+  {
+    "id": "ledger.no-balance-check",
+    "removes": "the balance check at commit: the function the two constraint triggers call returns at once",
+    "patch": "ledger.no-balance-check.patch",
+    "targets": ["db/migrations/0006_ledger_guarantees.sql"],
+    "lane": "api",
+    "files": ["test/finance/ledger-guarantees.spec.ts"],
+    "mustFail": [
+      {
+        "test": "ledger guarantees enforced by the database 1. every entry balances when its transaction commits refuses an entry with no lines",
+        "because": "expected null to match object { code: 'P0001'"
+      },
+      {
+        "test": "ledger guarantees enforced by the database 1. every entry balances when its transaction commits refuses an entry with one line",
+        "because": "expected null to match object { code: 'P0001'"
+      },
+      {
+        "test": "ledger guarantees enforced by the database 1. every entry balances when its transaction commits refuses an entry that sums to zero overall but not in each currency",
+        "because": "expected null to match object { code: 'P0001'"
+      }
+    ]
+  },
+  {
+    "id": "ledger.not-append-only",
+    "removes": "the four append-only triggers on ledger entries and lines",
+    "patch": "ledger.not-append-only.patch",
+    "targets": ["db/migrations/0006_ledger_guarantees.sql"],
+    "lane": "api",
+    "files": ["test/finance/ledger-guarantees.spec.ts"],
+    "mustFail": [
+      {
+        "test": "ledger guarantees enforced by the database 2. posted entries and lines cannot be updated or deleted refuses the owner role too: update ledger_lines set amount = -amount",
+        "because": "to match object { code: 'P0001'"
+      },
+      {
+        "test": "ledger guarantees enforced by the database 2. posted entries and lines cannot be updated or deleted refuses the owner role too: delete from ledger_lines",
+        "because": "to match object { code: 'P0001'"
+      },
+      {
+        "test": "ledger guarantees enforced by the database 2. posted entries and lines cannot be updated or deleted refuses the owner role too: truncate ledger_lines",
+        "because": "to match object { code: 'P0001'"
+      },
+      {
+        "test": "ledger guarantees enforced by the database 2. posted entries and lines cannot be updated or deleted refuses the owner role too: update ledger_entries set description = null",
+        "because": "to match object { code: 'P0001'"
+      },
+      {
+        "test": "ledger guarantees enforced by the database 2. posted entries and lines cannot be updated or deleted refuses the owner role too: delete from ledger_entries",
+        "because": "to match object { code: 'P0001'"
+      },
+      {
+        "test": "ledger guarantees enforced by the database 2. posted entries and lines cannot be updated or deleted refuses the owner role too: truncate ledger_entries cascade",
+        "because": "to match object { code: 'P0001'"
+      }
+    ]
+  },
+  {
+    "id": "ledger.locked-period-open",
+    "removes": "the check that the period of a new entry is open",
+    "patch": "ledger.locked-period-open.patch",
+    "targets": ["db/migrations/0006_ledger_guarantees.sql"],
+    "lane": "api",
+    "files": ["test/finance/ledger-guarantees.spec.ts"],
+    "mustFail": [
+      {
+        "test": "ledger guarantees enforced by the database 3. nothing posts into a locked period refuses a posting into the locked period from the runtime role",
+        "because": "expected null to match object { code: 'P0001'"
+      },
+      {
+        "test": "ledger guarantees enforced by the database 3. nothing posts into a locked period refuses a posting into the locked period from the owner role",
+        "because": "expected null to match object { code: 'P0001'"
+      }
+    ]
+  },
+  {
+    "id": "ledger.period-no-row-lock",
+    "removes": "the share lock a posting takes on its period, which makes a posting and a lock of the period wait for each other",
+    "patch": "ledger.period-no-row-lock.patch",
+    "targets": ["db/migrations/0006_ledger_guarantees.sql"],
+    "lane": "api",
+    "files": ["test/finance/ledger-concurrency.spec.ts"],
+    "mustFail": [
+      {
+        "test": "ledger under concurrency makes a lock wait for a posting that is still open, then the lock succeeds and the entry is in the period",
+        "because": "expected null to match object { code: '55P03' }"
+      },
+      {
+        "test": "ledger under concurrency makes a posting wait for a lock that is still open, then refuses it once the lock commits",
+        "because": "expected null to match object { code: '55P03' }"
+      }
+    ]
+  },
+  {
+    "id": "ledger.revalue-all-dates",
+    "removes": "the as-of date from the two balances a revaluation reads",
+    "patch": "ledger.revalue-all-dates.patch",
+    "targets": ["src/finance/ledger.service.ts"],
+    "lane": "api",
+    "files": ["test/finance/fx-revaluation-date.spec.ts"],
+    "mustFail": [
+      {
+        "test": "revaluation as of its date ignores a conversion dated after the revaluation date",
+        "because": "expected [ '1902 AED -10.0000'"
+      },
+      {
+        "test": "revaluation as of its date counts the later conversion once the revaluation date reaches it",
+        "because": "expected [ '1902 AED 15.0000'"
+      }
+    ]
+  },
+  {
+    "id": "ledger.no-position-lock",
+    "removes": "the advisory lock that a revaluation and a conversion take on the FX position",
+    "patch": "ledger.no-position-lock.patch",
+    "targets": ["src/finance/ledger.service.ts"],
+    "lane": "api",
+    "files": ["test/finance/ledger-concurrency.spec.ts"],
+    "mustFail": [
+      {
+        "test": "ledger under concurrency revaluing a position makes a second revaluation of the same currency wait, and books the difference once",
+        "because": "expected 3 to be 1"
+      },
+      {
+        "test": "ledger under concurrency revaluing a position makes a conversion in that currency wait until the revaluation commits",
+        "because": "expected { ok: true"
+      }
+    ]
+  },
+  {
+    "id": "ledger.invoice-no-share-lock",
+    "removes": "the share lock on the invoice while it is posted",
+    "patch": "ledger.invoice-no-share-lock.patch",
+    "targets": ["src/finance/ledger.service.ts"],
+    "lane": "api",
+    "files": ["test/finance/ledger-concurrency.spec.ts"],
+    "mustFail": [
+      {
+        "test": "ledger under concurrency posting an invoice makes an update of that invoice wait, then refuses it once the posting commits",
+        "because": "expected null to match object { code: '55P03' }"
+      }
+    ]
+  },
+  {
+    "id": "events.event-own-transaction",
+    "removes": "the shared transaction: the event is written in a transaction of its own, not in the one that accepts the student",
+    "patch": "events.event-own-transaction.patch",
+    "targets": ["src/events/outbox.ts"],
+    "lane": "api",
+    "files": ["test/admissions/accept-transaction.spec.ts"],
+    "mustFail": [
+      {
+        "test": "an acceptance and its event share one transaction leaves no student, no acceptance and no event when the transaction fails after the event was written",
+        "because": "expected { status: 'pending'"
+      }
+    ]
+  },
+  {
+    "id": "events.accept-no-row-lock",
+    "removes": "the row lock on the application while it is accepted",
+    "patch": "events.accept-no-row-lock.patch",
+    "targets": ["src/admissions/admissions.service.ts"],
+    "lane": "api",
+    "files": ["test/admissions/accept-transaction.spec.ts"],
+    "mustFail": [
+      {
+        "test": "an acceptance and its event share one transaction refuses a second accept that overlaps the first: one student, one event, one conflict",
+        "because": "expected 'accepted' to be an instance of ConflictException"
+      }
+    ]
+  },
+  {
+    "id": "events.no-processed-check",
+    "removes": "the processed-events check: the handler runs whether or not this run claimed the event",
+    "patch": "events.no-processed-check.patch",
+    "targets": ["src/events/event-runner.ts"],
+    "lane": "api",
+    "files": ["test/events/idempotency.spec.ts"],
+    "mustFail": [
+      {
+        "test": "an event delivered more than once charges once when the same event is delivered twice",
+        "because": "expected '1000.00' to be '500.00'"
+      },
+      {
+        "test": "an event delivered more than once charges once when it is delivered twice at the same moment",
+        "because": "expected '1000.00' to be '500.00'"
+      },
+      {
+        "test": "an event delivered more than once does not repeat the charge when the worker dies after the effect commits and before the job is marked done",
+        "because": "expected '1000.00' to be '500.00'"
+      }
+    ]
+  },
+  {
+    "id": "events.route-without-module-lock",
+    "removes": "the module lock a delivery takes before it reads whether the module is on",
+    "patch": "events.route-without-module-lock.patch",
+    "targets": ["src/events/event-runner.ts"],
+    "lane": "api",
+    "files": ["test/events/routing.spec.ts"],
+    "mustFail": [
+      {
+        "test": "routing an event to finance or to the webhook waits for a switch that has not committed, then follows what it committed",
+        "because": "expected [ 'finance' ] to deeply equal [ 'webhook' ]"
+      }
+    ]
+  },
+  {
+    "id": "events.no-delivery-resend",
+    "removes": "the re-send of the delivery job: only the run that made the routing decision sends it",
+    "patch": "events.no-delivery-resend.patch",
+    "targets": ["src/events/event-runner.ts"],
+    "lane": "api",
+    "files": ["test/events/webhook.spec.ts"],
+    "mustFail": [
+      {
+        "test": "webhook delivery a worker that dies after the routing commits and before the delivery job is sent sends the delivery job when the events job runs again, and the webhook arrives exactly once with the same id",
+        "because": "Timed out waiting"
+      }
+    ],
+    "alsoRun": [
+      "webhook delivery a worker that dies after the routing commits and before the delivery job is sent leaves the decision recorded, a pending delivery and no delivery job"
+    ]
+  },
+  {
+    "id": "events.no-dead-letter",
+    "removes": "the dead-letter queue of the events queue",
+    "patch": "events.no-dead-letter.patch",
+    "targets": ["src/events/event-queue.ts"],
+    "lane": "api",
+    "files": ["test/events/failed-events.spec.ts"],
+    "mustFail": [
+      {
+        "test": "an event whose handler keeps failing ends as one failure row in its school, while another school’s event is handled meanwhile",
+        "because": "Timed out waiting"
+      }
+    ]
+  },
+  {
+    "id": "events.unsigned-timestamp",
+    "removes": "the timestamp from what a webhook signature covers",
+    "patch": "events.unsigned-timestamp.patch",
+    "targets": ["src/events/webhook-signature.ts"],
+    "lane": "api",
+    "files": [
+      "src/events/webhook-signature.spec.ts",
+      "test/dev/receiver.spec.ts"
+    ],
+    "mustFail": [
+      {
+        "test": "webhook signature matches a signature computed outside this code",
+        "because": "expected 'v1,"
+      },
+      {
+        "test": "the development webhook receiver accepts a request signed the way the worker signs it, and records that the signature was valid",
+        "because": "expected 401 to be 200"
+      }
+    ]
+  },
+  {
+    "id": "invoices.no-numbering-lock",
+    "removes": "the advisory lock under which an invoice gets its number",
+    "patch": "invoices.no-numbering-lock.patch",
+    "targets": ["db/migrations/0012_calendar_guarantees.sql"],
+    "lane": "api",
+    "files": ["test/finance/invoice-number-concurrency.spec.ts"],
+    "mustFail": [
+      {
+        "test": "invoice numbers under concurrency makes a second insert wait for the first, then gives it the next number",
+        "because": "duplicate key value violates unique constraint \"invoices_tenant_id_number_unique\""
+      },
+      {
+        "test": "invoice numbers under concurrency gives 20 inserts at once the next 20 numbers, with no gap and no repeat",
+        "because": "duplicate key value violates unique constraint \"invoices_tenant_id_number_unique\""
+      }
+    ]
+  },
+  {
+    "id": "invoices.runtime-issued-at",
+    "removes": "the rule that the application cannot date an invoice: the runtime role may insert issued_at",
+    "patch": "invoices.runtime-issued-at.patch",
+    "targets": ["db/migrations/0012_calendar_guarantees.sql"],
+    "lane": "api",
+    "files": ["test/db/invoice-rules.spec.ts"],
+    "mustFail": [
+      {
+        "test": "what the database decides about an invoice the issue date cannot be set by the application through issued_at",
+        "because": "expected null to match object { code: '42501'"
+      }
+    ]
+  },
+  {
+    "id": "calendar.override-ignored",
+    "removes": "the country's official month starts from the Hijri conversion",
+    "patch": "calendar.override-ignored.patch",
+    "targets": ["src/calendar/hijri-calendar.ts"],
+    "lane": "api",
+    "files": [
+      "test/calendar/hijri-calendar.spec.ts",
+      "test/api/invoice.e2e-spec.ts"
+    ],
+    "mustFail": [
+      {
+        "test": "the Hijri calendar of a school uses the override of the school’s country",
+        "because": "expected { year: 1446, month: 10, day: 1 } to deeply equal { year: 1446, month: 9, day: 30 }"
+      },
+      {
+        "test": "GET /schools/:schoolId/invoices/:invoiceId the Hijri date follows the country’s override, and only in that country",
+        "because": "expected { gregorian: '2025-03-30'"
+      }
+    ]
+  },
+  {
+    "id": "web.no-bundled-fonts",
+    "removes": "the bundled font files from the web app",
+    "patch": "web.no-bundled-fonts.patch",
+    "targets": ["web/app/[lang]/layout.tsx"],
+    "lane": "web",
+    "files": ["web/e2e/production-build.spec.ts", "web/e2e/pdf.spec.ts"],
+    "mustFail": [
+      {
+        "test": "the production build carries the font files itself",
+        "because": "Received: false"
+      },
+      {
+        "test": "the invoice PDF embeds every font, and only the bundled ones, in ar",
+        "because": "NotoSans(Arabic)?-(Regular|Bold)"
+      },
+      {
+        "test": "the invoice PDF embeds every font, and only the bundled ones, in en",
+        "because": "NotoSans(Arabic)?-(Regular|Bold)"
+      }
+    ]
+  },
+  {
+    "id": "web.sign-in-in-production",
+    "removes": "the rule that keeps the demo sign-in out of a production build",
+    "patch": "web.sign-in-in-production.patch",
+    "targets": ["web/next.config.ts"],
+    "lane": "web",
+    "files": ["web/e2e/production-build.spec.ts"],
+    "mustFail": [
+      {
+        "test": "the demo sign-in is served in development and is not a route of the production build",
+        "because": "Expected: 404"
+      },
+      {
+        "test": "the demo sign-in leaves no trace in the production build",
+        "because": "sign-in"
+      }
+    ]
+  }
+]

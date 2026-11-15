@@ -1,0 +1,11 @@
+--- a/db/migrations/0001_row_level_security.sql
++++ b/db/migrations/0001_row_level_security.sql
+@@ -35,8 +35,6 @@
+ --> statement-breakpoint
+ ALTER TABLE students ENABLE ROW LEVEL SECURITY;
+ --> statement-breakpoint
+-ALTER TABLE students FORCE ROW LEVEL SECURITY;
+---> statement-breakpoint
+ ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
+ --> statement-breakpoint
+ ALTER TABLE invoices FORCE ROW LEVEL SECURITY;

@@ -1,0 +1,10 @@
+--- a/src/core/students.controller.ts
++++ b/src/core/students.controller.ts
+@@ -14,7 +14,6 @@
+   constructor(private readonly tenantDb: TenantDb) {}
+ 
+   @Get()
+-  @RequiresPermission('students:read')
+   list() {
+     // The same order on every request: by name, then by id.
+     return this.tenantDb.db

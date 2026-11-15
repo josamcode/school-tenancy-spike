@@ -1,0 +1,10 @@
+--- a/src/events/event-runner.ts
++++ b/src/events/event-runner.ts
+@@ -104,7 +104,6 @@
+   private async moduleOn(area: Area): Promise<boolean> {
+     if (AREAS[area] === 'core') return true;
+     const db = this.tenantDb.db;
+-    await db.execute(lockModuleShared(area));
+     const rows = await db
+       .select({ module: tenantModules.module })
+       .from(tenantModules)

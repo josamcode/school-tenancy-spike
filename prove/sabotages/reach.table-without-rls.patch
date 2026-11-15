@@ -1,0 +1,10 @@
+--- a/db/migrations/0013_admissions_read.sql
++++ b/db/migrations/0013_admissions_read.sql
+@@ -3,3 +3,7 @@
+ INSERT INTO permissions (key) VALUES ('admissions:read');
+ --> statement-breakpoint
+ INSERT INTO role_permissions (role, permission) VALUES ('school_admin', 'admissions:read');
++--> statement-breakpoint
++CREATE TABLE notes (id uuid PRIMARY KEY, body text NOT NULL);
++--> statement-breakpoint
++GRANT SELECT, INSERT ON notes TO app_runtime;

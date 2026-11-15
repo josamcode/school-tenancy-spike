@@ -1,0 +1,10 @@
+--- a/src/db/tenant-db.ts
++++ b/src/db/tenant-db.ts
+@@ -51,7 +51,6 @@
+          limit 1`,
+         [userId, schoolId],
+       );
+-      if (access.rowCount !== 1) throw new ForbiddenException();
+       await client.query("select set_config('app.tenant_id', $1, true)", [
+         schoolId,
+       ]);

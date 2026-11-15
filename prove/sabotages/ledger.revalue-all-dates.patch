@@ -1,0 +1,15 @@
+--- a/src/finance/ledger.service.ts
++++ b/src/finance/ledger.service.ts
+@@ -255,12 +255,10 @@
+     // later revaluation, even when they were posted first.
+     const foreignBalance = await this.accountBalance(
+       position.foreignAccountId,
+-      input.date,
+     );
+     const target = toBase(negate(foreignBalance, foreign), foreign, base, rate);
+     const current = await this.accountBalance(
+       position.baseAccountId,
+-      input.date,
+     );
+     const difference = subtract(target, current, base);
+     if (toMinor(difference, base) === 0n) return null;

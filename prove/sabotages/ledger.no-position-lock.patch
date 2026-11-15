@@ -1,0 +1,16 @@
+--- a/src/finance/ledger.service.ts
++++ b/src/finance/ledger.service.ts
+@@ -393,11 +393,8 @@
+     mode: 'shared' | 'exclusive',
+   ): Promise<void> {
+     const key = sql`hashtextextended(current_setting('app.tenant_id') || ':fx:' || ${currency}, 0)`;
+-    await this.tenantDb.db.execute(
+-      mode === 'exclusive'
+-        ? sql`select pg_advisory_xact_lock(${key})`
+-        : sql`select pg_advisory_xact_lock_shared(${key})`,
+-    );
++    void key;
++    void mode;
+   }
+ 
+   private async positionOf(currency: string) {

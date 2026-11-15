@@ -1,0 +1,11 @@
+--- a/db/migrations/0012_calendar_guarantees.sql
++++ b/db/migrations/0012_calendar_guarantees.sql
+@@ -14,8 +14,6 @@
+ DECLARE
+   zone text;
+ BEGIN
+-  PERFORM pg_advisory_xact_lock(
+-    hashtextextended(NEW.tenant_id::text || ':invoice_number', 0));
+   SELECT coalesce(max(i.number), 0) + 1 INTO NEW.number
+     FROM invoices i WHERE i.tenant_id = NEW.tenant_id;
+ 

@@ -1,0 +1,11 @@
+--- a/src/admissions/admissions.service.ts
++++ b/src/admissions/admissions.service.ts
+@@ -77,7 +77,7 @@
+     // until the first one commits, and then see that it is accepted.
+     const found = await db.execute<{ applicant_name: string; status: string }>(
+       sql`select applicant_name, status from admission_applications
+-           where id = ${applicationId} for update`,
++           where id = ${applicationId}`,
+     );
+     const application = found.rows[0];
+     if (!application) throw new NotFoundException('Application not found');
