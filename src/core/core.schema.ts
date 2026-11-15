@@ -37,6 +37,11 @@ export const memberships = pgTable(
   (t) => [primaryKey({ columns: [t.tenantId, t.userId] })],
 );
 
+// Catalog of sellable modules. Core is always on and is never listed here.
+export const modules = pgTable('modules', {
+  key: text().primaryKey(),
+});
+
 export const tenantModules = pgTable(
   'tenant_modules',
   {
@@ -44,7 +49,9 @@ export const tenantModules = pgTable(
       .notNull()
       .default(currentTenant)
       .references(() => tenants.id),
-    module: text().notNull(),
+    module: text()
+      .notNull()
+      .references(() => modules.key),
     enabled: boolean().notNull(),
   },
   (t) => [primaryKey({ columns: [t.tenantId, t.module] })],

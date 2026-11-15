@@ -30,8 +30,10 @@ pnpm db:seed
 - `app_runtime` is used by the app and by the tests. It is not a superuser,
   cannot bypass row-level security and owns no table.
 
-`pnpm db:seed` adds two schools, one user in each, one user in both, and a few
-students and invoices. The ids are in `db/seed.ts`.
+`pnpm db:seed` adds two schools with finance on, one user in each, one user in
+both, and a few students and invoices. It also adds three schools for the
+module tests: one with finance switched off, one with no finance row, and one
+that a single test switches on and off. The ids are in `db/seed.ts`.
 
 The passwords in `db/bootstrap/roles.sql` and `docker-compose.yml`, and every
 value in `.env.example` including `JWT_SECRET`, are local development values.
@@ -75,6 +77,28 @@ curl -H "Authorization: Bearer <token>" http://localhost:3100/schools/a0000000-0
 - Core tables (`tenants`, `users`, `memberships`, `students`) are always on.
   Module tables, starting with finance, may reference core tables but never
   another module's tables.
+
+## How module entitlements work
+
+- A module is on for a school only when `tenant_modules` has a row for it with
+  `enabled = true`. A missing row means off.
+- Module names live in the `modules` table, and `tenant_modules.module`
+  references it, so a misspelt name cannot be stored. The list in
+  `src/entitlements/modules.ts` must match it, and a test compares the two.
+- Every route with a `schoolId` declares `@Core()` or
+  `@RequiresModule('finance')`. If one declares neither, or both, the app does
+  not start and the error names the route.
+- The module check runs inside the tenant transaction, after the membership is
+  confirmed, and reads the table on every request. A member of a school with
+  the module off gets 403 with `code: "MODULE_DISABLED"`. Someone who is not a
+  member gets the plain membership 403 and learns nothing about the school.
+- Only `app_owner` can switch a module on or off. With `app.tenant_id` set to
+  the school:
+
+```sql
+insert into tenant_modules (module, enabled) values ('finance', true)
+on conflict (tenant_id, module) do update set enabled = excluded.enabled;
+```
 
 ## Test
 
