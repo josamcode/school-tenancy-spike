@@ -35,3 +35,14 @@ export function formatHijri(date: HijriDate, lang: Lang): string {
   const { hijriMonths, hijriEra } = messages(lang);
   return `${date.day} ${hijriMonths[date.month - 1]} ${date.year} ${hijriEra}`;
 }
+
+const INSTANT = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})/;
+
+// An instant the API gave in UTC: its date, then its time to the second.
+export function formatInstant(instant: string, lang: Lang): string {
+  const match = INSTANT.exec(instant);
+  if (!match) throw new Error(`"${instant}" is not an instant`);
+  return messages(lang)
+    ['time.utc'].replace('{date}', formatGregorian(match[1], lang))
+    .replace('{time}', match[2]);
+}
