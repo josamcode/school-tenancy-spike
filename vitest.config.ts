@@ -1,17 +1,22 @@
 import { defineConfig } from 'vitest/config';
 
+const shared = {
+  globals: true,
+  root: './',
+  setupFiles: ['./test/setup-env.ts'],
+  hookTimeout: 60_000,
+};
+
 export default defineConfig({
   resolve: { tsconfigPaths: true },
   test: {
-    globals: true,
-    root: './',
+    // Runs once, for both projects: one database per run.
     globalSetup: ['./test/global-setup.ts'],
-    setupFiles: ['./test/setup-env.ts'],
-    hookTimeout: 60_000,
     projects: [
       {
-        extends: true,
+        resolve: { tsconfigPaths: true },
         test: {
+          ...shared,
           name: 'main',
           include: [
             'src/**/*.spec.ts',
@@ -24,8 +29,9 @@ export default defineConfig({
       // These files run a dispatcher or a worker, which act on every school.
       // They run after the others and one at a time.
       {
-        extends: true,
+        resolve: { tsconfigPaths: true },
         test: {
+          ...shared,
           name: 'events',
           include: ['test/events/**/*.spec.ts', 'test/events/**/*.e2e-spec.ts'],
           fileParallelism: false,
