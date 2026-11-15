@@ -502,6 +502,23 @@ export const calendarInvoices = {
   ),
 };
 
+// A school whose students are stored out of name order, two of them with
+// the same name: the one with the higher id is stored first. Only read.
+export const schoolOrder = {
+  id: '50000000-0000-4000-8000-000000000001',
+  name: 'Student Order School',
+};
+export const userOrder = {
+  id: '50000000-0000-4000-8000-0000000000a1',
+  email: 'registrar@order.test',
+};
+export const studentsOrder = [
+  { id: '50000000-0000-4000-8000-000000000104', fullName: 'Omar Al Farsi' },
+  { id: '50000000-0000-4000-8000-000000000103', fullName: 'Layla Hassan' },
+  { id: '50000000-0000-4000-8000-000000000101', fullName: 'Layla Hassan' },
+  { id: '50000000-0000-4000-8000-000000000102', fullName: 'Ahmad Saleh' },
+];
+
 // Demo schools: what the screens show. Yasmin, Rayhan and Sindyan are only
 // read. Ghadeer and Murooj are written by accepting an application, by one
 // browser test file and by whoever runs the demo.
@@ -1050,6 +1067,7 @@ export async function seed(
       ...Object.values(eventSchools),
       ...Object.values(calendarSchools),
       ...Object.values(demoSchools),
+      schoolOrder,
     ];
     for (const school of schools) {
       await client.query(
@@ -1097,6 +1115,7 @@ export async function seed(
       userDemoTeacher,
       userDemoGroupAdmin,
       userDemoSindyan,
+      userOrder,
     ];
     for (const user of users) {
       await client.query(
@@ -1118,6 +1137,7 @@ export async function seed(
       ...membershipsLedger,
       ...membershipsEvents,
       ...membershipsCalendar,
+      { tenantId: schoolOrder.id, userId: userOrder.id },
     ].map((membership) => ({ ...membership, role: 'school_admin' }));
     const staff = [
       ...roleMemberships,
@@ -1250,6 +1270,7 @@ export async function seed(
         baseCurrency: 'AED',
       },
       { school: demoSchools.murooj, finance: false, admissions: true },
+      { school: schoolOrder, students: studentsOrder },
     ];
     for (const {
       school,
