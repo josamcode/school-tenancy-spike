@@ -132,6 +132,69 @@ test.describe('the invoice screen', () => {
     await expect(page.getByTestId('due-date-gregorian')).toHaveCount(0);
   });
 
+  test('shows the invoice with its Gregorian date when the Hijri date cannot be worked out, in Arabic', async ({
+    page,
+  }) => {
+    await page.goto(invoicePath('ar', calendarInvoices.kuwaitEid));
+    await expect(page.getByTestId('invoice-document')).toBeVisible();
+    await expect(page.getByTestId('error')).toHaveCount(0);
+    await expect(page.getByTestId('invoice-number')).toHaveText('INV-000001');
+    await expect(page.getByTestId('issue-date-gregorian')).toHaveText(
+      '20 مارس 2026',
+    );
+    await expect(page.getByTestId('issue-date-hijri')).toHaveText(
+      'التاريخ الهجري غير متاح',
+    );
+    await expect(page.getByTestId('amount-value')).toHaveText('300.000');
+  });
+
+  test('shows the invoice with its Gregorian date when the Hijri date cannot be worked out, in English', async ({
+    page,
+  }) => {
+    await page.goto(invoicePath('en', calendarInvoices.kuwaitEid));
+    await expect(page.getByTestId('invoice-document')).toBeVisible();
+    await expect(page.getByTestId('issue-date-gregorian')).toHaveText(
+      '20 March 2026',
+    );
+    await expect(page.getByTestId('issue-date-hijri')).toHaveText(
+      'Hijri date unavailable',
+    );
+  });
+
+  test('keeps the Hijri date of another date on the same invoice', async ({
+    page,
+  }) => {
+    await page.goto(invoicePath('ar', calendarInvoices.kuwaitMixed));
+    await expect(page.getByTestId('issue-date-gregorian')).toHaveText(
+      '10 فبراير 2026',
+    );
+    await expect(page.getByTestId('issue-date-hijri')).toHaveText(
+      '22 شعبان 1447 هـ',
+    );
+    await expect(page.getByTestId('due-date-gregorian')).toHaveText(
+      '20 مارس 2026',
+    );
+    await expect(page.getByTestId('due-date-hijri')).toHaveText(
+      'التاريخ الهجري غير متاح',
+    );
+  });
+
+  test('keeps the Hijri date of the same day in another country', async ({
+    page,
+  }) => {
+    await page.goto(invoicePath('ar', calendarInvoices.kuwaitEid));
+    await expect(page.getByTestId('issue-date-gregorian')).toHaveText(
+      '20 مارس 2026',
+    );
+    await page.goto(invoicePath('ar', dubaiEid));
+    await expect(page.getByTestId('issue-date-gregorian')).toHaveText(
+      '20 مارس 2026',
+    );
+    await expect(page.getByTestId('issue-date-hijri')).toHaveText(
+      '1 شوال 1447 هـ',
+    );
+  });
+
   test('lists a school’s invoices from the API, each linked to its screen', async ({
     page,
   }) => {

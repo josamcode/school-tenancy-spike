@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types.js';
@@ -218,10 +218,64 @@ describe('GET /schools/:schoolId/invoices/:invoiceId', () => {
       });
     });
 
-    it('is not shown when the country’s override cannot be right', async () => {
+    it('is left out when the country’s override cannot be right, and the invoice is still served', async () => {
       const response = await get(kuwait, calendarInvoices.kuwaitEid);
-      expect(response.status).toBe(500);
-      expect(JSON.stringify(response.body)).not.toContain('hijri');
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({
+        id: calendarInvoices.kuwaitEid.id,
+        number: 1,
+        school: { name: kuwait.name, nameI18n: kuwait.nameI18n },
+        student: { fullName: 'Omar Al Farsi' },
+        description: calendarInvoices.kuwaitEid.description,
+        amount: '300.000',
+        currency: 'KWD',
+        issueDate: { gregorian: '2026-03-20', hijri: null },
+        dueDate: null,
+      });
+    });
+
+    it('is left out for one date and kept for another on the same invoice', async () => {
+      const response = await get(kuwait, calendarInvoices.kuwaitMixed);
+      expect(response.status).toBe(200);
+      // 10 February is in a month the wrong override does not reach.
+      expect(response.body.issueDate).toEqual({
+        gregorian: '2026-02-10',
+        hijri: { year: 1447, month: 8, day: 22 },
+      });
+      expect(response.body.dueDate).toEqual({
+        gregorian: '2026-03-20',
+        hijri: null,
+      });
+    });
+
+    it('is still shown for the same day in a country whose overrides are right', async () => {
+      const inKuwait = await get(kuwait, calendarInvoices.kuwaitEid);
+      const inDubai = await get(dubai, calendarInvoices.dubaiEid);
+      expect(inKuwait.body.issueDate.gregorian).toBe('2026-03-20');
+      expect(inDubai.body.issueDate).toEqual({
+        gregorian: '2026-03-20',
+        hijri: { year: 1447, month: 10, day: 1 },
+      });
+    });
+
+    it('is logged with the country, the month, the override and the reason when it is left out', async () => {
+      const errors = vi.spyOn(Logger.prototype, 'error');
+      try {
+        await get(kuwait, calendarInvoices.kuwaitEid).expect(200);
+        await get(dubai, calendarInvoices.dubaiEid).expect(200);
+        const entries = errors.mock.calls.map((call) => String(call[0]));
+        // One entry: Kuwait's date. Dubai's date converts and logs nothing.
+        expect(entries).toHaveLength(1);
+        expect(entries[0]).toContain('2026-03-20');
+        expect(entries[0]).toContain('KW');
+        expect(entries[0]).toContain('1447-10');
+        expect(entries[0]).toContain('2026-03-21');
+        expect(entries[0]).toContain(
+          '1447-09 would have 31 days. An override for 1447-09 is probably missing.',
+        );
+      } finally {
+        errors.mockRestore();
+      }
     });
   });
 

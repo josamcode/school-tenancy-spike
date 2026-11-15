@@ -462,6 +462,17 @@ export const calendarInvoices = {
     null,
     tuition,
   ),
+  // Issued before the wrong override can reach, and due inside its reach.
+  kuwaitMixed: calendarInvoice(
+    calendarSchools.kuwait,
+    2,
+    'arabic',
+    '120.5000',
+    'KWD',
+    '2026-02-10T09:00:00Z',
+    '2026-03-20',
+    transport,
+  ),
   noCountry: calendarInvoice(
     calendarSchools.noCountry,
     1,

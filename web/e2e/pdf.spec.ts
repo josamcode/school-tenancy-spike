@@ -146,6 +146,47 @@ test.describe('the invoice PDF', () => {
     expect(text).toContain('29 Shawwal 1447 AH');
   });
 
+  test('has the Gregorian date and says the Hijri date is unavailable when it cannot be worked out, in Arabic', async ({
+    page,
+  }) => {
+    const { text } = await pdfOf(page, 'ar', calendarInvoices.kuwaitEid);
+    expect(text.join('\n')).toContain('20 مارس 2026');
+    expect(text).toContain('التاريخ الهجري غير متاح');
+    expect(text.join('\n')).toContain('300.000 KWD');
+  });
+
+  test('has the Gregorian date and says the Hijri date is unavailable when it cannot be worked out, in English', async ({
+    page,
+  }) => {
+    const { text } = await pdfOf(page, 'en', calendarInvoices.kuwaitEid);
+    expect(text.join('\n')).toContain('20 March 2026');
+    expect(text).toContain('Hijri date unavailable');
+    expect(text.join('\n')).toContain('300.000 KWD');
+  });
+
+  test('keeps the Hijri date of another date on the same invoice', async ({
+    page,
+  }) => {
+    const text = (
+      await pdfOf(page, 'ar', calendarInvoices.kuwaitMixed)
+    ).text.join('\n');
+    expect(text).toContain('10 فبراير 2026');
+    expect(text).toContain('22 شعبان 1447 هـ');
+    expect(text).toContain('20 مارس 2026');
+    expect(text).toContain('التاريخ الهجري غير متاح');
+  });
+
+  test('says what the screen says when the Hijri date is unavailable', async ({
+    page,
+  }) => {
+    for (const lang of ['ar', 'en'] as Lang[]) {
+      await page.goto(invoicePath(lang, calendarInvoices.kuwaitMixed));
+      const screen = await page.getByTestId('invoice-document').innerText();
+      const { text } = await pdfOf(page, lang, calendarInvoices.kuwaitMixed);
+      expect(words(text.join('\n'))).toEqual(words(screen));
+    }
+  });
+
   test('has the official month start where a country has one', async ({
     page,
   }) => {
