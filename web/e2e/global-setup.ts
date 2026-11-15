@@ -8,6 +8,8 @@ import {
   DEV_PORT,
   DEV_URL,
   JWT_SECRET,
+  RECEIVER_PORT,
+  RECEIVER_URL,
   WEB_PORT,
   WEB_URL,
 } from './support/stack';
@@ -84,7 +86,10 @@ export default async function setup() {
     }
   }
 
-  const database = await startDatabase();
+  // The demo school with a webhook sends it to this run's own receiver.
+  const database = await startDatabase({
+    receiverUrl: `${RECEIVER_URL}/hooks`,
+  });
   const children: ChildProcess[] = [];
   const teardown = async () => {
     for (const child of children) stop(child);
@@ -111,6 +116,22 @@ export default async function setup() {
         API_URL,
         WEB_ORIGIN: DEV_URL,
         JWT_SECRET,
+        RECEIVER_URL,
+      }),
+    );
+    // The worker delivers the events of the acceptance tests. It has the two
+    // connections the API is never given.
+    children.push(
+      start('worker', repo, [path.join(repo, 'dist/worker.js')], {
+        DATABASE_URL: database.runtimeUrl,
+        DISPATCHER_DATABASE_URL: database.dispatcherUrl,
+        QUEUE_DATABASE_URL: database.queueUrl,
+      }),
+    );
+    // The tests that need the receiver wait for it themselves.
+    children.push(
+      start('receiver', repo, [path.join(repo, 'dev/receiver.ts')], {
+        RECEIVER_PORT: String(RECEIVER_PORT),
       }),
     );
     await Promise.all([
