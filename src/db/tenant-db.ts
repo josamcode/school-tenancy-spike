@@ -58,6 +58,17 @@ export class TenantDb {
     }, fn);
   }
 
+  // For a route with no school in its path. Sets the user and never a
+  // school, so every policy that looks at the school matches nothing. What is
+  // left to read is the user's own row, memberships and grants.
+  runForUser<T>(userId: string, fn: () => Promise<T>): Promise<T> {
+    return this.transaction(async (client) => {
+      await client.query("select set_config('app.user_id', $1, true)", [
+        userId,
+      ]);
+    }, fn);
+  }
+
   // For an event handler. The school comes from the job, and the event must
   // then be visible under that school's row-level security: a job that names
   // the wrong school finds nothing and fn never runs. The user is the one who
@@ -99,8 +110,8 @@ export class TenantDb {
     );
   }
 
-  // The only code that opens a transaction with app.tenant_id set. enter
-  // decides the school and the user, and throws to refuse.
+  // The only code that opens a transaction for the application. enter decides
+  // the user and whether a school is set, and throws to refuse.
   private async transaction<T>(
     enter: (client: pg.PoolClient) => Promise<void>,
     fn: () => Promise<T>,
