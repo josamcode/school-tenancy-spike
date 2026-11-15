@@ -8,6 +8,8 @@ interface School {
   id: string;
   name: string;
   nameI18n: I18nText | null;
+  // An IANA name. Instants are returned in UTC and shown in this zone.
+  timezone: string;
   // Null when the user is not a member and holds only grants there.
   role: string | null;
   grants: string[];
@@ -43,8 +45,9 @@ export class MeController {
     );
     const schools: School[] = [];
     for (const id of ids) {
-      // A school's name is visible only with that school set, so each one is
-      // read in a transaction of its own, which confirms the access again.
+      // A school's name and timezone are visible only with that school set,
+      // so each one is read in a transaction of its own, which confirms the
+      // access again.
       const named = await this.nameOf(userId, id);
       if (!named) continue;
       schools.push({
@@ -65,14 +68,20 @@ export class MeController {
   private async nameOf(
     userId: string,
     schoolId: string,
-  ): Promise<Pick<School, 'name' | 'nameI18n'> | undefined> {
+  ): Promise<Pick<School, 'name' | 'nameI18n' | 'timezone'> | undefined> {
     try {
       return await this.tenantDb.run(userId, schoolId, async () => {
         const { rows } = await this.tenantDb.db.execute<{
           name: string;
           name_i18n: I18nText | null;
-        }>(sql`select name, name_i18n from tenants`);
-        return { name: rows[0].name, nameI18n: rows[0].name_i18n };
+          timezone: string;
+        }>(sql`select name, name_i18n, timezone from tenants`);
+        const [school] = rows;
+        return {
+          name: school.name,
+          nameI18n: school.name_i18n,
+          timezone: school.timezone,
+        };
       });
     } catch (error) {
       // The access was removed between the two reads.
