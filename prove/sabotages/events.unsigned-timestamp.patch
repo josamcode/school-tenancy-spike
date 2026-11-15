@@ -1,0 +1,11 @@
+--- a/src/events/webhook-signature.ts
++++ b/src/events/webhook-signature.ts
+@@ -14,7 +14,7 @@
+ export function signWebhook(message: SignedMessage): string {
+   const key = Buffer.from(message.secret.replace(/^whsec_/, ''), 'base64');
+   const mac = createHmac('sha256', key)
+-    .update(`${message.id}.${message.timestamp}.${message.body}`)
++    .update(`${message.id}.${message.body}`)
+     .digest('base64');
+   return `v1,${mac}`;
+ }

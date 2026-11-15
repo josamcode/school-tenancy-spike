@@ -1,0 +1,10 @@
+--- a/src/auth/auth.module.ts
++++ b/src/auth/auth.module.ts
+@@ -4,6 +4,6 @@
+ 
+ // Global: a route needs a token unless it is marked @Public().
+ @Module({
+-  providers: [{ provide: APP_GUARD, useClass: AuthGuard }],
++  providers: [AuthGuard],
+ })
+ export class AuthModule {}

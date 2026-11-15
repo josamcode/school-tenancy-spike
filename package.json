@@ -23,6 +23,8 @@
     "test": "vitest run",
     "test:web": "pnpm --filter web test",
     "test:e2e": "pnpm build && pnpm --filter web build && pnpm --filter web test:e2e",
+    "prove": "node prove/prove.ts",
+    "docs:data-model": "vitest run test/db/data-model.spec.ts -u",
     "db:up": "docker compose up -d --wait",
     "db:migrate": "node --env-file=.env db/migrate.ts",
     "db:seed": "node --env-file=.env db/seed.ts"

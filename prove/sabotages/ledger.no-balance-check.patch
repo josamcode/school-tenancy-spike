@@ -1,0 +1,10 @@
+--- a/db/migrations/0006_ledger_guarantees.sql
++++ b/db/migrations/0006_ledger_guarantees.sql
+@@ -142,6 +142,7 @@
+   line_count integer;
+   unbalanced text;
+ BEGIN
++  RETURN;
+   SELECT count(*) INTO line_count FROM ledger_lines l
+    WHERE l.tenant_id = p_tenant AND l.entry_id = p_entry;
+   IF line_count < 2 THEN

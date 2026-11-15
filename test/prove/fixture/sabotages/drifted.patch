@@ -1,0 +1,11 @@
+--- a/src/discount.ts
++++ b/src/discount.ts
+@@ -1,7 +1,7 @@
+ // A stand-in for a protected rule: a discount is never more than the amount.
+ export function discounted(amount: number, discount: number): number {
+   if (discount >= amount) {
+-    throw new Error('A discount cannot exceed the amount');
++    return 0;
+   }
+   return amount - discount;
+ }

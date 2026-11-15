@@ -6,7 +6,7 @@ import { applications, eventSchools, userEvents } from '../../db/seed.js';
 import { AdmissionsService } from '../../src/admissions/admissions.service.js';
 import { AppModule } from '../../src/app.module.js';
 import { TenantDb } from '../../src/db/tenant-db.js';
-import { inScope, runtimePool, sleep } from '../support/db.js';
+import { inScope, runtimePool, until } from '../support/db.js';
 
 const school = eventSchools.acceptRollback;
 
@@ -96,18 +96,21 @@ describe('an acceptance and its event share one transaction', () => {
     const held = new Promise<void>((resolve) => {
       commitFirst = resolve;
     });
-    let accepted = () => {};
-    const firstAccepted = new Promise<void>((resolve) => {
+    let accepted = (_pid: number) => {};
+    const firstAccepted = new Promise<number>((resolve) => {
       accepted = resolve;
     });
 
     const first = tenantDb.run(userEvents.id, school.id, async () => {
       const acceptance = await admissions.accept(application.id);
-      accepted();
+      const { rows } = await tenantDb.db.execute<{ pid: number }>(
+        sql`select pg_backend_pid() as pid`,
+      );
+      accepted(rows[0].pid);
       await held;
       return acceptance;
     });
-    await firstAccepted;
+    const firstPid = await firstAccepted;
 
     let secondSettled = false;
     const second = tenantDb
@@ -119,7 +122,17 @@ describe('an acceptance and its event share one transaction', () => {
       .finally(() => {
         secondSettled = true;
       });
-    await sleep(300);
+    // No fixed wait: the second accept is known to have reached the
+    // application's row once a backend waits for a lock that the first
+    // transaction holds. With the row lock that is its read. Without it, it is
+    // its update of the same row.
+    await until(async () => {
+      const blocked = await pool.query(
+        'select 1 from pg_stat_activity where $1::int = any (pg_blocking_pids(pid))',
+        [firstPid],
+      );
+      return blocked.rows.length > 0;
+    });
     expect(secondSettled).toBe(false);
 
     commitFirst();

@@ -1,0 +1,11 @@
+--- a/db/migrations/0012_calendar_guarantees.sql
++++ b/db/migrations/0012_calendar_guarantees.sql
+@@ -52,7 +52,7 @@
+ -- The owner still can supply issued_at, for an import of existing invoices.
+ REVOKE INSERT ON invoices FROM app_runtime;
+ --> statement-breakpoint
+-GRANT INSERT (tenant_id, id, student_id, amount, currency, description, due_date)
++GRANT INSERT (tenant_id, id, student_id, amount, currency, description, due_date, issued_at)
+   ON invoices TO app_runtime;
+ --> statement-breakpoint
+ 

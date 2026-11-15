@@ -1,0 +1,12 @@
+--- a/db/migrations/0006_ledger_guarantees.sql
++++ b/db/migrations/0006_ledger_guarantees.sql
+@@ -76,8 +76,7 @@
+   period ledger_periods%ROWTYPE;
+ BEGIN
+   SELECT * INTO period FROM ledger_periods p
+-   WHERE p.tenant_id = NEW.tenant_id AND p.id = NEW.period_id
+-     FOR SHARE;
++   WHERE p.tenant_id = NEW.tenant_id AND p.id = NEW.period_id;
+   IF NOT FOUND THEN
+     RAISE EXCEPTION 'period not found';
+   END IF;

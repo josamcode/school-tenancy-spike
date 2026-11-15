@@ -1,0 +1,21 @@
+--- a/db/migrations/0006_ledger_guarantees.sql
++++ b/db/migrations/0006_ledger_guarantees.sql
+@@ -188,18 +188,6 @@
+ END
+ $$;
+ --> statement-breakpoint
+-CREATE TRIGGER ledger_entries_append_only BEFORE UPDATE OR DELETE ON ledger_entries
+-  FOR EACH ROW EXECUTE FUNCTION ledger_append_only();
+---> statement-breakpoint
+-CREATE TRIGGER ledger_entries_no_truncate BEFORE TRUNCATE ON ledger_entries
+-  FOR EACH STATEMENT EXECUTE FUNCTION ledger_append_only();
+---> statement-breakpoint
+-CREATE TRIGGER ledger_lines_append_only BEFORE UPDATE OR DELETE ON ledger_lines
+-  FOR EACH ROW EXECUTE FUNCTION ledger_append_only();
+---> statement-breakpoint
+-CREATE TRIGGER ledger_lines_no_truncate BEFORE TRUNCATE ON ledger_lines
+-  FOR EACH STATEMENT EXECUTE FUNCTION ledger_append_only();
+---> statement-breakpoint
+ 
+ -- A posted invoice cannot be changed or deleted.
+ CREATE FUNCTION invoice_posted_immutable() RETURNS trigger LANGUAGE plpgsql AS $$

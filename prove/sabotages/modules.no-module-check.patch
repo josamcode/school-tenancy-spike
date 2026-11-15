@@ -1,0 +1,10 @@
+--- a/src/db/tenant.interceptor.ts
++++ b/src/db/tenant.interceptor.ts
+@@ -55,7 +55,6 @@
+     return from(
+       this.tenantDb.run(request.userId, schoolId, async () => {
+         const area = areaOf(permission)!;
+-        if (AREAS[area] === 'module') await this.requireModule(area);
+         await this.requirePermission(request.userId, schoolId, permission);
+         return lastValueFrom(next.handle());
+       }),

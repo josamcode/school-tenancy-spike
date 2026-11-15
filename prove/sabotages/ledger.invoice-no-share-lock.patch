@@ -1,0 +1,12 @@
+--- a/src/finance/ledger.service.ts
++++ b/src/finance/ledger.service.ts
+@@ -130,8 +130,7 @@
+     const [invoice] = await this.tenantDb.db
+       .select()
+       .from(invoices)
+-      .where(eq(invoices.id, invoiceId))
+-      .for('share');
++      .where(eq(invoices.id, invoiceId));
+     if (!invoice) throw new Error(`Unknown invoice ${invoiceId}`);
+ 
+     const currency = currencyOrThrow(invoice.currency);

@@ -1,0 +1,10 @@
+--- a/src/events/event-runner.ts
++++ b/src/events/event-runner.ts
+@@ -31,6 +31,7 @@
+       const handler = this.handlers.for(event.type);
+ 
+       let decided = await this.decisionOf(event.id);
++      if (decided !== undefined) return false;
+       if (decided === undefined) {
+         // The module is read under its lock, so a switch either commits
+         // before this read or waits until this transaction ends.

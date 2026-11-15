@@ -1,0 +1,11 @@
+--- a/src/discount.ts
++++ b/src/discount.ts
+@@ -3,7 +3,7 @@
+   if (discount > amount) {
+     throw new Error('A discount cannot exceed the amount');
+   }
+-  return amount - discount;
++  return amount - ;
+ }
+ 
+ export function label(amount: number): string {

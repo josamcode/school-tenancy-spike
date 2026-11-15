@@ -1,0 +1,12 @@
+--- a/db/migrations/0006_ledger_guarantees.sql
++++ b/db/migrations/0006_ledger_guarantees.sql
+@@ -81,9 +81,6 @@
+   IF NOT FOUND THEN
+     RAISE EXCEPTION 'period not found';
+   END IF;
+-  IF period.status <> 'open' THEN
+-    RAISE EXCEPTION 'period is locked';
+-  END IF;
+   IF NEW.entry_date < period.start_date OR NEW.entry_date > period.end_date THEN
+     RAISE EXCEPTION 'entry date is outside its period';
+   END IF;

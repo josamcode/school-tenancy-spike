@@ -1,0 +1,26 @@
+--- a/src/events/outbox.ts
++++ b/src/events/outbox.ts
+@@ -13,10 +13,18 @@
+     type: T,
+     payload: EventPayloads[T],
+   ): Promise<string> {
+-    const { rows } = await this.tenantDb.db.execute<{ id: string }>(sql`
+-      insert into outbox_events (type, payload)
+-      values (${type}, ${JSON.stringify(payload)}::jsonb)
+-      returning id`);
+-    return rows[0].id;
++    const scope = await this.tenantDb.db.execute<{
++      actor: string;
++      school: string;
++    }>(sql`select current_setting('app.user_id') as actor,
++                  current_setting('app.tenant_id') as school`);
++    const { actor, school } = scope.rows[0];
++    return this.tenantDb.run(actor, school, async () => {
++      const { rows } = await this.tenantDb.db.execute<{ id: string }>(sql`
++        insert into outbox_events (type, payload)
++        values (${type}, ${JSON.stringify(payload)}::jsonb)
++        returning id`);
++      return rows[0].id;
++    });
+   }
+ }

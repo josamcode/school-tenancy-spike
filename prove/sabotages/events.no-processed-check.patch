@@ -1,0 +1,20 @@
+--- a/src/events/event-runner.ts
++++ b/src/events/event-runner.ts
+@@ -30,7 +30,7 @@
+       const db = this.tenantDb.db;
+       const handler = this.handlers.for(event.type);
+ 
+-      let decided = await this.decisionOf(event.id);
++      let decided: string | undefined;
+       if (decided === undefined) {
+         // The module is read under its lock, so a switch either commits
+         // before this read or waits until this transaction ends.
+@@ -42,7 +42,7 @@
+           insert into processed_events (event_id, handler)
+           values (${event.id}, ${target})
+           on conflict do nothing`);
+-        if (claimed.rowCount === 1) {
++        if (claimed.rowCount !== null) {
+           if (target === WEBHOOK) {
+             await db.execute(
+               sql`insert into webhook_deliveries (event_id) values (${event.id})`,

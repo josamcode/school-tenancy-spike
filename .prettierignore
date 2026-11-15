@@ -7,3 +7,4 @@ db/migrations
 next-env.d.ts
 test-results
 playwright-report
+docs/data-model.md

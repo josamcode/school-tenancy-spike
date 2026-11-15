@@ -1,0 +1,11 @@
+--- a/db/migrations/0001_row_level_security.sql
++++ b/db/migrations/0001_row_level_security.sql
+@@ -44,7 +44,7 @@
+ 
+ -- Tenant data: one policy for reads and writes, for every role including the owner.
+ CREATE POLICY tenant_isolation ON students
+-  USING (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid)
++  USING (true)
+   WITH CHECK (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid);
+ --> statement-breakpoint
+ CREATE POLICY tenant_isolation ON invoices

@@ -1,0 +1,11 @@
+--- a/db/migrations/0000_tables.sql
++++ b/db/migrations/0000_tables.sql
+@@ -41,5 +41,6 @@
+ ALTER TABLE "memberships" ADD CONSTRAINT "memberships_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ ALTER TABLE "students" ADD CONSTRAINT "students_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ ALTER TABLE "tenant_modules" ADD CONSTRAINT "tenant_modules_tenant_id_tenants_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+-ALTER TABLE "invoices" ADD CONSTRAINT "invoices_tenant_id_student_id_students_tenant_id_id_fk" FOREIGN KEY ("tenant_id","student_id") REFERENCES "public"."students"("tenant_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
++CREATE UNIQUE INDEX "students_id_key" ON "students" USING btree ("id");--> statement-breakpoint
++ALTER TABLE "invoices" ADD CONSTRAINT "invoices_tenant_id_student_id_students_tenant_id_id_fk" FOREIGN KEY ("student_id") REFERENCES "public"."students"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ CREATE UNIQUE INDEX "users_email_lower_key" ON "users" USING btree (lower("email"));
+\ No newline at end of file
