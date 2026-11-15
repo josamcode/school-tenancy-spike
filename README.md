@@ -66,6 +66,12 @@ curl -H "Authorization: Bearer <token>" http://localhost:3100/schools/a0000000-0
   settings end with the transaction.
 - Application code reaches the database only through that transaction. A call
   outside it, or after it has ended, throws.
+- Both checks are global. Every route needs a token unless it is marked
+  `@Public()`, and `GET /health` is the only public route. Every route with a
+  `schoolId` path parameter runs inside the tenant transaction. A new
+  controller gets both without declaring anything.
+- If a rollback fails, the connection is destroyed instead of going back to
+  the pool, because it may still carry the previous request's tenant.
 - Core tables (`tenants`, `users`, `memberships`, `students`) are always on.
   Module tables, starting with finance, may reference core tables but never
   another module's tables.
