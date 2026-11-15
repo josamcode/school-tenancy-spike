@@ -169,6 +169,7 @@ export const ledgerSchools = {
   guarantees: ledgerSchool(2, 'Ledger Guarantees School'),
   concurrency: ledgerSchool(3, 'Ledger Concurrency School'),
   fx: ledgerSchool(4, 'Ledger FX School'),
+  revaluation: ledgerSchool(5, 'Ledger Revaluation School'),
 };
 export const userLedger = {
   id: '1ed00000-0000-4000-8000-0000000000a1',
