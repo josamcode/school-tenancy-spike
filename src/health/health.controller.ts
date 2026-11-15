@@ -1,14 +1,13 @@
-import { Controller, Get, Inject } from '@nestjs/common';
-import pg from 'pg';
-import { PG_POOL } from '../db/db.module.js';
+import { Controller, Get } from '@nestjs/common';
+import { DbHealth } from '../db/db-health.js';
 
 @Controller('health')
 export class HealthController {
-  constructor(@Inject(PG_POOL) private readonly pool: pg.Pool) {}
+  constructor(private readonly dbHealth: DbHealth) {}
 
   @Get()
   async check() {
-    await this.pool.query('select 1');
+    await this.dbHealth.ping();
     return { status: 'ok', db: 'up' };
   }
 }
