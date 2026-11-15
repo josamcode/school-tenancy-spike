@@ -6,9 +6,11 @@ import {
   Post,
 } from '@nestjs/common';
 import { TenantDb } from '../db/tenant-db.js';
+import { Core } from '../entitlements/decorators.js';
 import { students } from './core.schema.js';
 
 @Controller('schools/:schoolId/students')
+@Core()
 export class StudentsController {
   constructor(private readonly tenantDb: TenantDb) {}
 
