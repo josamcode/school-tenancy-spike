@@ -60,6 +60,21 @@ describe('ledger guarantees enforced by the database', () => {
       failureOf(() => client.query(sql, params)),
     );
 
+  // TRUNCATE locks whole tables, for every school at once, and with CASCADE
+  // it locks two of them in the opposite order to a posting. This gives up
+  // after 100ms and tries again, so it can never be part of a deadlock with a
+  // test in another file.
+  async function attemptWithoutWaiting(pool: pg.Pool, sql: string) {
+    for (let tries = 0; tries < 300; tries++) {
+      const failure = await inScope(pool, scope, async (client) => {
+        await client.query("select set_config('lock_timeout', '100ms', true)");
+        return failureOf(() => client.query(sql));
+      });
+      if (failure?.code !== '55P03') return failure;
+    }
+    throw new Error(`never got the lock for: ${sql}`);
+  }
+
   beforeAll(async () => {
     runtime = runtimePool();
     owner = ownerPool();
@@ -150,11 +165,15 @@ describe('ledger guarantees enforced by the database', () => {
     ];
 
     it.each(statements)('refuses the runtime role: %s', async (sql) => {
-      expect(await attempt(runtime, sql)).toMatchObject(permissionDenied);
+      expect(await attemptWithoutWaiting(runtime, sql)).toMatchObject(
+        permissionDenied,
+      );
     });
 
     it.each(statements)('refuses the owner role too: %s', async (sql) => {
-      expect(await attempt(owner, sql)).toMatchObject(refused('append-only'));
+      expect(await attemptWithoutWaiting(owner, sql)).toMatchObject(
+        refused('append-only'),
+      );
     });
 
     it('refuses lines added to an entry that was posted in an earlier transaction', async () => {
