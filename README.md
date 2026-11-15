@@ -341,6 +341,14 @@ failed delivery.
   override that is probably missing. Nothing is clamped silently. A month
   after an override that is not announced yet starts where it was calculated,
   moved only as far as 29 or 30 days need.
+- **A Hijri date that cannot be worked out does not stop the invoice.** The
+  stored date is Gregorian and the Hijri date is display only. When the
+  conversion throws, for a wrong override or any other reason, the route still
+  answers 200: that date keeps its Gregorian value and its `hijri` is `null`.
+  The screen and the PDF show the Gregorian date and "Hijri date unavailable"
+  in the page's language. The API logs the date, the country, the month, the
+  override and the reason. Other dates on the invoice and other countries are
+  not affected.
 - **The PDF** is the web app's own print page, printed by headless Chromium
   (Playwright). The screen and the print page render one component with one
   stylesheet and the same font files. The PDF route asks the API for the
