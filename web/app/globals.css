@@ -1,0 +1,102 @@
+/* Logical properties only: the layout follows the page direction. */
+
+html {
+  font-family: 'Noto Sans', 'Noto Sans Arabic', sans-serif;
+}
+
+body {
+  margin: 0;
+  background: #f4f4f4;
+  color: #111;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-block: 12px;
+  padding-inline: 24px;
+  border-block-end: 1px solid #c8c8c8;
+  background: #fff;
+}
+
+.app-header a {
+  color: inherit;
+}
+
+.app-name {
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.app-main {
+  max-inline-size: 880px;
+  margin-inline: auto;
+  padding-block: 24px;
+  padding-inline: 16px;
+}
+
+.actions {
+  display: flex;
+  gap: 16px;
+  margin-block-end: 16px;
+}
+
+.list {
+  inline-size: 100%;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+.list th,
+.list td {
+  padding-block: 8px;
+  padding-inline: 12px;
+  border-block-end: 1px solid #c8c8c8;
+  text-align: start;
+}
+
+.notice {
+  padding-block: 12px;
+  padding-inline: 16px;
+  border: 1px solid #b58900;
+  border-inline-start-width: 6px;
+  background: #fff8e1;
+}
+
+.error {
+  padding-block: 12px;
+  padding-inline: 16px;
+  border: 1px solid #b00020;
+  border-inline-start-width: 6px;
+  background: #fff;
+}
+
+.choices {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.choices button {
+  inline-size: 100%;
+  padding-block: 10px;
+  padding-inline: 14px;
+  border: 1px solid #888;
+  background: #fff;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.choices small {
+  display: block;
+  color: #555;
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+}
