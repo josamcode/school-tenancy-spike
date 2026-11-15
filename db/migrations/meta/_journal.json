@@ -64,6 +64,20 @@
       "when": 1794736694138,
       "tag": "0008_event_guarantees",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794738890630,
+      "tag": "0009_event_failures",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794738896475,
+      "tag": "0010_event_failure_policies",
+      "breakpoints": true
     }
   ]
 }

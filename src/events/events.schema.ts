@@ -64,6 +64,25 @@ export const processedEvents = pgTable(
   ],
 );
 
+// An event whose job used all its retries without being handled. Written by
+// the worker on the events queue's dead-letter queue, once per event.
+export const eventFailures = pgTable(
+  'event_failures',
+  {
+    tenantId: tenantId(),
+    eventId: uuid('event_id').notNull(),
+    failedAt: instant('failed_at').notNull().defaultNow(),
+    error: text().notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.tenantId, t.eventId] }),
+    foreignKey({
+      columns: [t.tenantId, t.eventId],
+      foreignColumns: [outboxEvents.tenantId, outboxEvents.id],
+    }),
+  ],
+);
+
 export const webhookEndpoints = pgTable('webhook_endpoints', {
   tenantId: tenantId()
     .primaryKey()
