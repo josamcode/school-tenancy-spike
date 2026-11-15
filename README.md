@@ -238,6 +238,14 @@ as a webhook. Every event goes to exactly one of the two.
 - **At least once.** A second delivery finds the row and does nothing, so an
   event delivered twice charges once. That covers a worker that dies after the
   effect commits and before its job is marked done.
+- **A handler that keeps failing.** An events job is retried with exponential
+  backoff: 5 retries, starting at 1 second. After the last one pg-boss copies
+  it to a dead-letter queue, whose worker writes one row to `event_failures`
+  in the event's school: the event id, the time and the last error. A school
+  with finance on and no registration fee, or an acceptance dated in a locked
+  period, ends there, with nothing in the ledger. If the event is not visible
+  in the job's school the failure is logged, the dead-letter job fails, and
+  nothing is recorded.
 - **The fee date** is the acceptance's date in the school's timezone
   (`tenants.timezone`, an IANA name), not the day the worker runs.
 - **The webhook.** Each school has one endpoint and one secret
@@ -263,7 +271,8 @@ as a webhook. Every event goes to exactly one of the two.
 Known limits: the webhook secret is stored in plain text and the runtime role
 can read it within its school; endpoint URLs are not checked against internal
 addresses; there is no per-school limit on worker concurrency; delivery order
-is not guaranteed; and nothing redrives a failed delivery.
+is not guaranteed; nothing redrives a failed event; and nothing redrives a
+failed delivery.
 
 ## Test
 
