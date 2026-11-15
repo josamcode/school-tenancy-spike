@@ -1,102 +1,332 @@
 /* Logical properties only: the layout follows the page direction. */
 
+/* The six colors of the app. Nothing else names a color. */
+:root {
+  /* All text, and the background of the raw server response. */
+  --color-ink: #1a1d21;
+  /* The page, and the text on the raw server response. */
+  --color-paper: #fbfaf7;
+  /* Hairlines. Never text. */
+  --color-line: #cfcbc2;
+  /* What can be acted on: links, buttons, the focus outline. */
+  --color-lapis: #1d4f91;
+  /* The server allowed it. Always beside the word. */
+  --color-allowed: #1e6b3a;
+  /* The server refused it. Always beside the word. */
+  --color-refused: #a32a1e;
+}
+
 html {
+  background: var(--color-paper);
+  color: var(--color-ink);
   font-family: 'Noto Sans', 'Noto Sans Arabic', sans-serif;
+  font-size: 16px;
+  /* Arabic needs the room. */
+  line-height: 1.7;
 }
 
 body {
   margin: 0;
-  background: #f4f4f4;
-  color: #111;
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+h1 {
+  margin-block: 0 8px;
+  font-size: 28px;
+  line-height: 1.4;
+}
+
+h2 {
+  margin-block: 32px 8px;
+  font-size: 20px;
+  line-height: 1.5;
+}
+
+p {
+  margin-block: 0 12px;
+}
+
+a {
+  color: var(--color-lapis);
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-lapis);
+  outline-offset: 2px;
+}
+
+button {
+  padding-block: 8px;
+  padding-inline: 16px;
+  border: 1px solid var(--color-lapis);
+  border-radius: 0;
+  background: var(--color-lapis);
+  color: var(--color-paper);
+  font: inherit;
+  cursor: pointer;
+}
+
+input {
+  min-inline-size: 0;
+  padding-block: 8px;
+  padding-inline: 12px;
+  border: 1px solid var(--color-ink);
+  border-radius: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font: inherit;
 }
 
 .app-header {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
+  align-items: baseline;
   justify-content: space-between;
+  gap: 16px;
   padding-block: 12px;
-  padding-inline: 24px;
-  border-block-end: 1px solid #c8c8c8;
-  background: #fff;
-}
-
-.app-header a {
-  color: inherit;
+  padding-inline: 16px;
+  border-block-end: 1px solid var(--color-line);
 }
 
 .app-name {
+  color: var(--color-ink);
   font-weight: 700;
   text-decoration: none;
 }
 
 .app-main {
-  max-inline-size: 880px;
+  max-inline-size: 1184px;
   margin-inline: auto;
-  padding-block: 24px;
+  padding-block: 24px 48px;
   padding-inline: 16px;
+}
+
+/* The school's bar: the user's schools, then the pages of this one. */
+.school-bar {
+  display: grid;
+  gap: 8px;
+  margin-block-end: 32px;
+  padding-block-end: 12px;
+  border-block-end: 1px solid var(--color-line);
+}
+
+.school-bar nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 24px;
+}
+
+.bar-label {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.link-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.link-list a {
+  display: inline-block;
+  padding-block: 4px;
+  border-block-end: 2px solid transparent;
+  text-decoration: none;
+}
+
+.link-list a[aria-current='page'] {
+  border-block-end-color: var(--color-lapis);
+  color: var(--color-ink);
+  font-weight: 700;
+}
+
+/* A screen, and beside it what the server sent back for it. */
+.proof {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 32px;
+}
+
+.screen {
+  min-inline-size: 0;
+}
+
+@media (min-width: 900px) {
+  .app-header,
+  .app-main {
+    padding-inline: 32px;
+  }
+
+  .proof {
+    grid-template-columns: minmax(0, 1fr) 380px;
+    align-items: start;
+  }
+}
+
+.lead {
+  max-inline-size: 60ch;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.table {
+  inline-size: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding-block: 8px;
+  padding-inline: 0 16px;
+  border-block-end: 1px solid var(--color-line);
+  text-align: start;
+  vertical-align: baseline;
+}
+
+.table th {
+  font-size: 14px;
+}
+
+.table .number {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.note {
+  margin-block-start: 16px;
+  font-size: 14px;
+}
+
+.allowed {
+  color: var(--color-allowed);
+  font-weight: 700;
+}
+
+.refused {
+  color: var(--color-refused);
+  font-weight: 700;
+}
+
+.error,
+.notice {
+  max-inline-size: 60ch;
+  padding-block: 12px;
+  border-block: 1px solid var(--color-line);
 }
 
 .actions {
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 4px 24px;
   margin-block-end: 16px;
 }
 
-.list {
-  inline-size: 100%;
-  border-collapse: collapse;
-  background: #fff;
+.inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px 12px;
 }
 
-.list th,
-.list td {
-  padding-block: 8px;
-  padding-inline: 12px;
-  border-block-end: 1px solid #c8c8c8;
-  text-align: start;
+.inline-form label {
+  display: grid;
+  flex: 1 1 240px;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 700;
 }
 
-.notice {
+.facts {
+  display: grid;
+  gap: 4px;
+  margin-block: 0 16px;
+}
+
+.facts div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.facts dt {
+  font-weight: 700;
+}
+
+.facts dd {
+  margin: 0;
+}
+
+/* The steps an event goes through. A step's rule darkens when it is done. */
+.trail {
+  margin: 0;
+  padding-inline-start: 24px;
+}
+
+.trail-step {
   padding-block: 12px;
-  padding-inline: 16px;
-  border: 1px solid #b58900;
-  border-inline-start-width: 6px;
-  background: #fff8e1;
+  border-block-end: 2px solid var(--color-line);
 }
 
-.error {
-  padding-block: 12px;
-  padding-inline: 16px;
-  border: 1px solid #b00020;
-  border-inline-start-width: 6px;
-  background: #fff;
+.trail-step[data-state='done'] {
+  border-block-end-color: var(--color-ink);
+}
+
+.trail-step p {
+  margin: 0;
+}
+
+.trail-step[data-state='done'] .trail-title {
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .trail-step {
+    transition: border-color 150ms;
+  }
+}
+
+/* The demo guide, in development. */
+.guide-group {
+  margin-block-end: 32px;
 }
 
 .choices {
   display: grid;
   gap: 8px;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .choices button {
   inline-size: 100%;
-  padding-block: 10px;
-  padding-inline: 14px;
-  border: 1px solid #888;
-  background: #fff;
-  font: inherit;
+  border-color: var(--color-line);
+  background: var(--color-paper);
+  color: var(--color-ink);
   text-align: start;
-  cursor: pointer;
+}
+
+.choices bdi {
+  color: var(--color-lapis);
+  font-weight: 700;
 }
 
 .choices small {
   display: block;
-  color: #555;
+  font-size: 14px;
 }
 
 @media print {
+  html,
   body {
-    background: #fff;
+    background: none;
   }
 }
