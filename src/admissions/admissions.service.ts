@@ -6,11 +6,28 @@ import {
 import { sql } from 'drizzle-orm';
 import { students } from '../core/core.schema.js';
 import { TenantDb } from '../db/tenant-db.js';
+import { EventStatus, EventStatusView, utc } from '../events/event-status.js';
 import { Outbox } from '../events/outbox.js';
 
 export interface Acceptance {
   applicationId: string;
   studentId: string;
+}
+
+export interface Application {
+  id: string;
+  applicantName: string;
+  status: string;
+  studentId: string | null;
+  acceptedAt: string | null;
+}
+
+interface ApplicationRow extends Record<string, unknown> {
+  id: string;
+  applicant_name: string;
+  status: string;
+  student_id: string | null;
+  accepted_at: string | null;
 }
 
 // Must be called inside a tenant transaction. The student, the acceptance
@@ -20,7 +37,39 @@ export class AdmissionsService {
   constructor(
     private readonly tenantDb: TenantDb,
     private readonly outbox: Outbox,
+    private readonly events: EventStatus,
   ) {}
+
+  async list(): Promise<Application[]> {
+    const { rows } = await this.tenantDb.db.execute<ApplicationRow>(sql`
+      select id, applicant_name, status, student_id,
+             ${utc(sql`accepted_at`)} as accepted_at
+        from admission_applications
+       order by id`);
+    return rows.map((row) => ({
+      id: row.id,
+      applicantName: row.applicant_name,
+      status: row.status,
+      studentId: row.student_id,
+      acceptedAt: row.accepted_at,
+    }));
+  }
+
+  async eventOf(applicationId: string): Promise<EventStatusView> {
+    const found = await this.tenantDb.db.execute<{ status: string }>(
+      sql`select status from admission_applications where id = ${applicationId}`,
+    );
+    // Another school's application is not visible here, so it is not found.
+    if (!found.rows[0]) throw new NotFoundException('Application not found');
+    const event = await this.events.find(
+      'student.accepted',
+      'applicationId',
+      applicationId,
+    );
+    // A pending application has caused nothing yet.
+    if (!event) throw new NotFoundException('No event for this application');
+    return event;
+  }
 
   async accept(applicationId: string): Promise<Acceptance> {
     const db = this.tenantDb.db;

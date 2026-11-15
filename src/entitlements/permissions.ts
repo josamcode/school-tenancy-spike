@@ -7,6 +7,7 @@ export const PERMISSIONS = [
   'students:read',
   'students:create',
   'finance:read',
+  'admissions:read',
   'admissions:accept',
 ] as const satisfies readonly PermissionKey[];
 
