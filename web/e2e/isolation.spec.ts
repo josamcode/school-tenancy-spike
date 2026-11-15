@@ -6,8 +6,9 @@ import { ARABIC_INDIC_DIGITS, signIn } from './support/session';
 import { WEB_URL } from './support/stack';
 
 const { yasmin, rayhan, sindyan, ghadeer, murooj } = demoSchools;
+// In the order the API gives them: by name.
 const names = (school: { students: { fullName: string }[] }) =>
-  school.students.map((student) => student.fullName);
+  school.students.map((student) => student.fullName).sort();
 
 for (const lang of LANGS) {
   test.describe(`isolation, in ${lang}`, () => {

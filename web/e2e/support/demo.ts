@@ -53,6 +53,50 @@ export const PALETTE_RGB = [
 export const PAPER = PALETTE_RGB[1];
 export const LAPIS = PALETTE_RGB[3];
 
+// Every demo school is in Dubai, which is four hours ahead of UTC all year.
+const DUBAI_ZONE = {
+  ar: 'توقيت الإمارات العربية المتحدة',
+  en: 'United Arab Emirates Time',
+};
+
+// Checks every instant inside an element: each is marked up with the UTC
+// instant the API gave, and must read as that instant in Dubai, with the
+// zone named in the page's language. Returns how many it found.
+export async function expectDubaiTime(
+  within: Locator,
+  lang: Lang,
+): Promise<number> {
+  const shown = await within
+    .locator('time[datetime]')
+    .evaluateAll((all) =>
+      all.map((time) => [
+        time.getAttribute('datetime') ?? '',
+        time.textContent ?? '',
+      ]),
+    );
+  for (const [instant, text] of shown) {
+    if (!/Z$/.test(instant)) throw new Error(`"${instant}" is not in UTC`);
+    const local = new Date(Date.parse(instant) + 4 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 19);
+    const [date, time] = local.split('T');
+    const [year, , day] = date.split('-');
+    const asExpected =
+      text.startsWith(`${Number(day)} `) &&
+      text.includes(` ${year}`) &&
+      text.endsWith(` ${time} (${DUBAI_ZONE[lang]})`);
+    if (!asExpected) {
+      throw new Error(
+        `${instant} is shown as "${text}", not as ${local} in Dubai`,
+      );
+    }
+    if (/UTC|GMT|غرينتش/.test(text)) {
+      throw new Error(`"${text}" names UTC`);
+    }
+  }
+  return shown.length;
+}
+
 export interface StyleSweep {
   colors: string[];
   decoration: string[];

@@ -7,6 +7,7 @@ import {
 } from '../../db/seed';
 import {
   exchange,
+  expectDubaiTime,
   LANGS,
   schoolPath,
   sweepStyles,
@@ -102,6 +103,8 @@ for (const lang of LANGS) {
       demoFee.currency,
     );
     await expect(page.getByTestId('attempt')).toHaveCount(0);
+    // When it was accepted, sent and routed, each in the school's own time.
+    expect(await expectDubaiTime(page.getByTestId('screen'), lang)).toBe(3);
 
     const event = exchange(
       page,
@@ -166,6 +169,9 @@ for (const lang of LANGS) {
     await expect(attempts).toHaveAttribute('data-attempt', '1');
     await expect(attempts).toHaveAttribute('data-response', '200');
     await expect(page.getByTestId('fee-amount')).toHaveCount(0);
+    // Accepted, sent, routed, delivered, and the one attempt: each in the
+    // school's own time.
+    expect(await expectDubaiTime(page.getByTestId('screen'), lang)).toBe(5);
 
     const event = exchange(
       page,

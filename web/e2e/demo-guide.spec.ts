@@ -6,7 +6,7 @@ import {
   userDemoPrincipal,
   userDemoTeacher,
 } from '../../db/seed';
-import { LANGS, schoolPath, words } from './support/demo';
+import { expectDubaiTime, LANGS, schoolPath, words } from './support/demo';
 import { Lang } from './support/session';
 import { DEV_URL } from './support/stack';
 
@@ -160,6 +160,8 @@ test.describe('the demo guide, in development', () => {
       await expect(record).toContainText(
         words(lang)['receiver.developmentOnly'],
       );
+      // When the receiver got it, in the school's own time.
+      expect(await expectDubaiTime(record, lang)).toBe(1);
     });
   }
 });
