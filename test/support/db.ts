@@ -116,3 +116,41 @@ export async function asOwner(
     await pool.end();
   }
 }
+
+// Runs fn in a transaction with the given settings and commits.
+export async function committed<T>(
+  pool: pg.Pool,
+  scope: Scope,
+  fn: (client: pg.PoolClient) => Promise<T>,
+): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+    if (scope.userId) {
+      await client.query("select set_config('app.user_id', $1, true)", [
+        scope.userId,
+      ]);
+    }
+    if (scope.tenantId) {
+      await client.query("select set_config('app.tenant_id', $1, true)", [
+        scope.tenantId,
+      ]);
+    }
+    const result = await fn(client);
+    await client.query('commit');
+    return result;
+  } catch (error) {
+    await client.query('rollback');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// What a trigger raises when it refuses a write.
+export const refused = (message: string) => ({
+  code: 'P0001',
+  message: expect.stringContaining(message),
+});
+export const exclusionViolation = { code: '23P01' };
+export const checkViolation = { code: '23514' };

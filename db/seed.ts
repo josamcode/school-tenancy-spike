@@ -154,6 +154,27 @@ export const group = {
 };
 export const groupSchools = [schoolA.id, schoolB.id];
 
+// Ledger schools: finance on, base currency AED, two students each. Each one
+// is written by a single test file and read by nothing else.
+const ledgerSchool = (n: number, name: string) => ({
+  id: `1ed00000-0000-4000-8000-00000000000${n}`,
+  name,
+  students: {
+    s: `1ed00000-0000-4000-8000-0000000${n}0101`,
+    t: `1ed00000-0000-4000-8000-0000000${n}0102`,
+  },
+});
+export const ledgerSchools = {
+  scenario: ledgerSchool(1, 'Ledger Scenario School'),
+  guarantees: ledgerSchool(2, 'Ledger Guarantees School'),
+  concurrency: ledgerSchool(3, 'Ledger Concurrency School'),
+  fx: ledgerSchool(4, 'Ledger FX School'),
+};
+export const userLedger = {
+  id: '1ed00000-0000-4000-8000-0000000000a1',
+  email: 'bursar@ledger.test',
+};
+
 export async function seed(ownerUrl: string): Promise<void> {
   const client = new pg.Client({ connectionString: ownerUrl });
   await client.connect();
