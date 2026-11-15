@@ -13,13 +13,14 @@ export default async function DemoSignIn({
   const { lang } = await params;
   if (!isLang(lang)) notFound();
   return (
-    <main className="app-main">
+    <main className="app-main guide">
       <p className="notice" data-testid="demo-notice">
-        <strong>Demo sign-in.</strong> Development only. There is no identity
-        provider yet, so this page signs you in as a seed user.{' '}
-        <span lang="ar" dir="rtl">
-          للتجربة فقط، في بيئة التطوير.
-        </span>
+        <strong>
+          <bdi lang="en">Demo sign-in.</bdi>
+        </strong>{' '}
+        {lang === 'ar'
+          ? 'للتجربة فقط، في بيئة التطوير. لا يوجد مزوّد هوية بعد، فهذه الصفحة تُدخلك باسم مستخدم من بيانات التجربة.'
+          : 'Development only. There is no identity provider yet, so this page signs you in as a seed user.'}
       </p>
       {demoGuide.map((group) => (
         <section
@@ -42,8 +43,11 @@ export default async function DemoSignIn({
                     data-user={entry.userId}
                     data-school={entry.schoolId}
                   >
-                    <bdi dir="ltr">{entry.email}</bdi>
-                    <small>{entry.shows[lang]}</small>
+                    {entry.shows[lang]}
+                    <small>
+                      {lang === 'ar' ? 'الدخول باسم' : 'Sign in as'}{' '}
+                      <bdi dir="ltr">{entry.email}</bdi>
+                    </small>
                   </button>
                 </form>
               </li>

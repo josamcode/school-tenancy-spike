@@ -272,7 +272,7 @@ input {
 
 .trail-step {
   padding-block: 12px;
-  border-block-end: 2px solid var(--color-line);
+  border-block-end: 1px solid var(--color-line);
 }
 
 .trail-step[data-state='done'] {
@@ -294,33 +294,38 @@ input {
 }
 
 /* The demo guide, in development. */
+.guide {
+  max-inline-size: 760px;
+}
+
 .guide-group {
   margin-block-end: 32px;
 }
 
 .choices {
-  display: grid;
-  gap: 8px;
   margin: 0;
   padding: 0;
+  border-block-start: 1px solid var(--color-line);
   list-style: none;
+}
+
+.choices li {
+  border-block-end: 1px solid var(--color-line);
 }
 
 .choices button {
   inline-size: 100%;
-  border-color: var(--color-line);
-  background: var(--color-paper);
+  padding-block: 12px;
+  padding-inline: 0;
+  border: 0;
+  background: none;
   color: var(--color-ink);
   text-align: start;
 }
 
-.choices bdi {
-  color: var(--color-lapis);
-  font-weight: 700;
-}
-
 .choices small {
   display: block;
+  color: var(--color-lapis);
   font-size: 14px;
 }
 
