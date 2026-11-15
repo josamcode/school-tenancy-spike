@@ -117,19 +117,6 @@ export const userMemberG = {
   id: 'a9000000-0000-4000-8000-0000000000a2',
   email: 'teacher@alwadi.test',
 };
-export const roleMemberships = [
-  { tenantId: schoolA.id, userId: userStaffA.id, role: 'staff' },
-  { tenantId: schoolC.id, userId: userStaffA.id, role: 'school_admin' },
-  { tenantId: schoolG.id, userId: userMemberG.id, role: 'staff' },
-];
-export const grants = [
-  {
-    tenantId: schoolB.id,
-    userId: userGroupAdmin.id,
-    permission: 'students:read',
-  },
-  { tenantId: schoolG.id, userId: userGrantG.id, permission: 'students:read' },
-];
 // This user is staff in D and holds a students:create grant in H, so a check
 // that forgot the school on a grant would let them create students in D.
 // H is written only by the test that uses this grant.
@@ -141,6 +128,25 @@ export const userStaffDGrantH = {
   id: 'ac000000-0000-4000-8000-0000000000a1',
   email: 'coordinator@alqamar.test',
 };
+export const roleMemberships = [
+  { tenantId: schoolA.id, userId: userStaffA.id, role: 'staff' },
+  { tenantId: schoolC.id, userId: userStaffA.id, role: 'school_admin' },
+  { tenantId: schoolG.id, userId: userMemberG.id, role: 'staff' },
+  { tenantId: schoolD.id, userId: userStaffDGrantH.id, role: 'staff' },
+];
+export const grants = [
+  {
+    tenantId: schoolB.id,
+    userId: userGroupAdmin.id,
+    permission: 'students:read',
+  },
+  { tenantId: schoolG.id, userId: userGrantG.id, permission: 'students:read' },
+  {
+    tenantId: schoolH.id,
+    userId: userStaffDGrantH.id,
+    permission: 'students:create',
+  },
+];
 // The group links A and B. Its admin has a grant on B only.
 export const group = {
   id: '91000000-0000-4000-8000-000000000001',
@@ -162,6 +168,7 @@ export async function seed(ownerUrl: string): Promise<void> {
       schoolE,
       schoolF,
       schoolG,
+      schoolH,
     ];
     for (const school of schools) {
       await client.query(
@@ -178,6 +185,7 @@ export async function seed(ownerUrl: string): Promise<void> {
       userGroupAdmin,
       userGrantG,
       userMemberG,
+      userStaffDGrantH,
     ];
     for (const user of users) {
       await client.query(
@@ -241,6 +249,7 @@ export async function seed(ownerUrl: string): Promise<void> {
       { school: schoolE },
       { school: schoolF },
       { school: schoolG, students: studentsG },
+      { school: schoolH },
     ];
     for (const {
       school,
