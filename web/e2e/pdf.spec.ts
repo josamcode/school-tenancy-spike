@@ -81,13 +81,17 @@ test.describe('the invoice PDF', () => {
       page,
     }) => {
       const { pdf } = await pdfOf(page, lang, dubaiEid);
+      // The names come first. What else a missing font leaves in the file
+      // depends on the font the system falls back to.
+      for (const font of pdf.fonts) {
+        expect(font.name).toMatch(
+          /^[A-Z]{6}\+NotoSans(Arabic)?-(Regular|Bold)$/,
+        );
+      }
       expect(pdf.fonts.length).toBeGreaterThanOrEqual(2);
       expect(pdf.otherFonts).toBe(0);
       for (const font of pdf.fonts) {
         expect(font.embedded).toBe(true);
-        expect(font.name).toMatch(
-          /^[A-Z]{6}\+NotoSans(Arabic)?-(Regular|Bold)$/,
-        );
       }
       const families = pdf.fonts.map((font) => font.name.slice(7));
       expect(families.some((name) => name.startsWith('NotoSans-'))).toBe(true);
