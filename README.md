@@ -294,11 +294,17 @@ browser rows.
 `pnpm prove ledger` runs one group and `pnpm prove isolation.force-rls` runs
 one row. `--jobs=N` sets how many run at once.
 
-The output above is from a full run of the thirty rows on a Windows laptop,
-three at a time. It took 18 minutes, and every row passed. It is not part of the checks on a pull request. It is a workflow
-that is started by hand (`.github/workflows/prove.yml`). What does run on
-every pull request is a test that every patch still applies to the code as
-it is (`test/prove/manifest.spec.ts`).
+A full run of the thirty rows has passed on Windows and on Linux:
+
+- on a Windows laptop, three rows at a time: 18 minutes. The output above is
+  from that run;
+- on Linux, in GitHub Actions, with the default number of rows at a time:
+  6 minutes.
+
+It is not part of the checks on a pull request. It is a workflow that is
+started by hand (`.github/workflows/prove.yml`). What does run on every pull
+request is a test that every patch still applies to the code as it is
+(`test/prove/manifest.spec.ts`).
 
 ## Architecture in brief
 
@@ -419,8 +425,9 @@ Each decision record lists its own. Together:
 
 - The sabotages are hand-picked. A protection without one is covered by its
   tests only.
-- `pnpm prove` has run on Windows. The workflow that runs it on Linux can be
-  started only once it is on the default branch.
+- A test with several assertions can fail on a different one on another
+  operating system, and its row then fails for "another reason". The row
+  prints the whole message when that happens.
 
 ## Not proven yet
 
