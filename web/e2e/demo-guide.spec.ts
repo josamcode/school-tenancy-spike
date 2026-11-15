@@ -23,6 +23,10 @@ test.describe('the demo guide, in development', () => {
     await page.goto(`/${lang}/dev/sign-in`);
     await expect(entry(page, id)).toBeVisible();
     await entry(page, id).click();
+    // The development server may still be compiling what comes next.
+    await page.waitForURL((url) => !url.pathname.endsWith('/dev/sign-in'), {
+      timeout: 60_000,
+    });
   };
 
   for (const lang of LANGS) {

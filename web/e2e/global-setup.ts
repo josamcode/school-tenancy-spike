@@ -139,6 +139,22 @@ export default async function setup() {
       ready(WEB_URL, children[1], 'The web app'),
       ready(DEV_URL, children[2], 'The development server'),
     ]);
+    // The development server compiles a page on its first request. Each page
+    // is asked for once here, so no test waits for a compilation.
+    const school = `${DEV_URL}/ar/schools/00000000-0000-4000-8000-000000000000`;
+    for (const page of [
+      `${DEV_URL}/ar/dev/sign-in`,
+      `${DEV_URL}/ar`,
+      school,
+      `${school}/students`,
+      `${school}/invoices`,
+      `${school}/invoices/00000000-0000-4000-8000-000000000000`,
+      `${school}/ledger`,
+      `${school}/admissions`,
+      `${school}/admissions/00000000-0000-4000-8000-000000000000`,
+    ]) {
+      await fetch(page, { signal: AbortSignal.timeout(120_000) });
+    }
   } catch (error) {
     await teardown();
     throw error;
