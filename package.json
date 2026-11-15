@@ -15,12 +15,16 @@
     "format": "prettier --write .",
     "lint": "oxlint --type-aware",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "db:up": "docker compose up -d --wait",
+    "db:migrate": "node --env-file=.env db/migrate.ts"
   },
   "dependencies": {
     "@nestjs/common": "^12.5.0",
     "@nestjs/core": "^12.5.0",
     "@nestjs/platform-express": "^12.5.0",
+    "drizzle-orm": "^0.45.4",
+    "pg": "^8.23.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
   },
@@ -28,13 +32,17 @@
     "@nestjs/cli": "^12.0.13",
     "@nestjs/schematics": "^12.0.13",
     "@nestjs/testing": "^12.5.0",
+    "@testcontainers/postgresql": "^12.2.1",
     "@types/express": "^5.0.6",
     "@types/node": "^24.19.2",
+    "@types/pg": "^8.23.1",
     "@types/supertest": "^7.2.1",
+    "drizzle-kit": "^0.31.11",
     "oxlint": "^1.93.0",
     "oxlint-tsgolint": "^7.0.2007",
     "prettier": "^3.10.1",
     "supertest": "^7.3.2",
+    "testcontainers": "^12.2.1",
     "typescript": "^6.0.3",
     "vite": "^8.3.8",
     "vitest": "^4.1.12"
