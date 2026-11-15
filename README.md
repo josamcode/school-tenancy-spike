@@ -34,8 +34,9 @@ pnpm db:seed
 both, and a few students and invoices. It also adds three schools for the
 module tests: one with finance switched off, one with no finance row, and one
 that a single test switches on and off. For the permission tests it adds a
-staff user, a group with an admin who holds one grant, and two more schools
-that single tests write to. The ids are in `db/seed.ts`.
+staff user, a group with an admin who holds one grant, a user who is staff in
+one school and holds a grant in another, and three more schools that single
+tests write to. The ids are in `db/seed.ts`.
 
 The passwords in `db/bootstrap/roles.sql` and `docker-compose.yml`, and every
 value in `.env.example` including `JWT_SECRET`, are local development values.
