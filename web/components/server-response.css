@@ -1,0 +1,73 @@
+/* Logical properties only. The one stylesheet that names a monospace font. */
+
+.response {
+  min-inline-size: 0;
+  padding-block-start: 24px;
+  border-block-start: 1px solid var(--color-line);
+}
+
+.response h2 {
+  margin-block-start: 0;
+}
+
+.response-note {
+  font-size: 14px;
+}
+
+.response-list {
+  display: grid;
+  gap: 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.response-list li {
+  min-inline-size: 0;
+}
+
+.exchange-result {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 0;
+}
+
+.exchange-status {
+  font-size: 40px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.exchange-reason {
+  margin-block: 0 8px;
+  font-size: 14px;
+}
+
+/* The raw exchange: the only dark surface in the app. */
+.exchange-raw {
+  max-block-size: 240px;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-family: ui-monospace, Consolas, Menlo, 'Noto Sans Arabic', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  tab-size: 2;
+  text-align: start;
+  /* Long ids wrap, so nothing of a response is cut off at the edge. */
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+@media (min-width: 900px) {
+  .response {
+    padding-block-start: 0;
+    padding-inline-start: 32px;
+    border-block-start: 0;
+    border-inline-start: 1px solid var(--color-line);
+  }
+}

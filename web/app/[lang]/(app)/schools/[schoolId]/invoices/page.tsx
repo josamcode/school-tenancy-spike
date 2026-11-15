@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { ApiError } from '../../../../../../components/api-error';
-import { getInvoices } from '../../../../../../lib/api';
+import { Screen } from '../../../../../../components/screen';
+import { getInvoices, getMySchools } from '../../../../../../lib/api';
 import {
   formatGregorian,
   formatInvoiceNumber,
@@ -16,21 +17,28 @@ export default async function Invoices({
   if (!isLang(lang)) notFound();
   const text = messages(lang);
 
-  const result = await getInvoices(schoolId);
+  const [schools, result] = await Promise.all([
+    getMySchools(),
+    getInvoices(schoolId),
+  ]);
+  const exchanges = [result.exchange, schools.exchange];
   if (!result.ok) {
     return (
-      <ApiError status={result.status} problem={result.problem} lang={lang} />
+      <Screen lang={lang} exchanges={exchanges}>
+        <h1>{text['invoices.title']}</h1>
+        <ApiError status={result.status} problem={result.problem} lang={lang} />
+      </Screen>
     );
   }
   const invoices = [...result.data].sort((a, b) => a.number - b.number);
 
   return (
-    <>
+    <Screen lang={lang} exchanges={exchanges}>
       <h1>{text['invoices.title']}</h1>
       {invoices.length === 0 ? (
         <p>{text['invoices.empty']}</p>
       ) : (
-        <table className="list">
+        <table className="table">
           <thead>
             <tr>
               <th>{text['invoices.number']}</th>
@@ -54,6 +62,6 @@ export default async function Invoices({
           </tbody>
         </table>
       )}
-    </>
+    </Screen>
   );
 }

@@ -5,22 +5,28 @@
   margin-inline: auto;
   padding-block: 32px;
   padding-inline: 40px;
-  border: 1px solid #c8c8c8;
-  background: #fff;
-  color: #111;
+  border: 1px solid var(--color-line);
+  background: var(--color-paper);
+  color: var(--color-ink);
   font-size: 16px;
   line-height: 1.6;
+}
+
+/* The document keeps its own spacing, so the PDF is laid out as before. */
+.invoice p {
+  margin-block: 16px;
 }
 
 .invoice-header {
   margin-block-end: 24px;
   padding-block-end: 16px;
-  border-block-end: 2px solid #111;
+  border-block-end: 2px solid var(--color-ink);
 }
 
 .invoice-header h1 {
   margin-block: 4px;
   font-size: 28px;
+  line-height: 1.6;
 }
 
 .invoice-header p {
@@ -55,7 +61,7 @@
 .invoice-lines td {
   padding-block: 8px;
   padding-inline: 12px;
-  border-block-end: 1px solid #c8c8c8;
+  border-block-end: 1px solid var(--color-line);
   text-align: start;
 }
 
@@ -80,5 +86,6 @@
     max-inline-size: none;
     padding: 0;
     border: 0;
+    background: none;
   }
 }

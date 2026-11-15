@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation';
 import { ApiError } from '../../../../../../../components/api-error';
 import { InvoiceDocument } from '../../../../../../../components/invoice-document';
-import { getInvoice } from '../../../../../../../lib/api';
+import { Screen } from '../../../../../../../components/screen';
+import { getInvoice, getMySchools } from '../../../../../../../lib/api';
 import { isLang, messages } from '../../../../../../../lib/i18n';
 
 export default async function InvoiceScreen({
@@ -13,16 +14,22 @@ export default async function InvoiceScreen({
   if (!isLang(lang)) notFound();
   const text = messages(lang);
 
-  const result = await getInvoice(schoolId, invoiceId);
+  const [schools, result] = await Promise.all([
+    getMySchools(),
+    getInvoice(schoolId, invoiceId),
+  ]);
+  const exchanges = [result.exchange, schools.exchange];
   if (!result.ok) {
     return (
-      <ApiError status={result.status} problem={result.problem} lang={lang} />
+      <Screen lang={lang} exchanges={exchanges}>
+        <ApiError status={result.status} problem={result.problem} lang={lang} />
+      </Screen>
     );
   }
   const invoices = `/${lang}/schools/${schoolId}/invoices`;
 
   return (
-    <>
+    <Screen lang={lang} exchanges={exchanges}>
       <nav className="actions">
         <a href={invoices}>{text['invoice.back']}</a>
         <a href={`${invoices}/${invoiceId}/pdf`} data-testid="pdf-link">
@@ -30,6 +37,6 @@ export default async function InvoiceScreen({
         </a>
       </nav>
       <InvoiceDocument invoice={result.data} lang={lang} />
-    </>
+    </Screen>
   );
 }

@@ -8,6 +8,8 @@ import {
   DEV_PORT,
   DEV_URL,
   JWT_SECRET,
+  RECEIVER_PORT,
+  RECEIVER_URL,
   WEB_PORT,
   WEB_URL,
 } from './support/stack';
@@ -84,7 +86,10 @@ export default async function setup() {
     }
   }
 
-  const database = await startDatabase();
+  // The demo school with a webhook sends it to this run's own receiver.
+  const database = await startDatabase({
+    receiverUrl: `${RECEIVER_URL}/hooks`,
+  });
   const children: ChildProcess[] = [];
   const teardown = async () => {
     for (const child of children) stop(child);
@@ -111,6 +116,22 @@ export default async function setup() {
         API_URL,
         WEB_ORIGIN: DEV_URL,
         JWT_SECRET,
+        RECEIVER_URL,
+      }),
+    );
+    // The worker delivers the events of the acceptance tests. It has the two
+    // connections the API is never given.
+    children.push(
+      start('worker', repo, [path.join(repo, 'dist/worker.js')], {
+        DATABASE_URL: database.runtimeUrl,
+        DISPATCHER_DATABASE_URL: database.dispatcherUrl,
+        QUEUE_DATABASE_URL: database.queueUrl,
+      }),
+    );
+    // The tests that need the receiver wait for it themselves.
+    children.push(
+      start('receiver', repo, [path.join(repo, 'dev/receiver.ts')], {
+        RECEIVER_PORT: String(RECEIVER_PORT),
       }),
     );
     await Promise.all([
@@ -118,6 +139,22 @@ export default async function setup() {
       ready(WEB_URL, children[1], 'The web app'),
       ready(DEV_URL, children[2], 'The development server'),
     ]);
+    // The development server compiles a page on its first request. Each page
+    // is asked for once here, so no test waits for a compilation.
+    const school = `${DEV_URL}/ar/schools/00000000-0000-4000-8000-000000000000`;
+    for (const page of [
+      `${DEV_URL}/ar/dev/sign-in`,
+      `${DEV_URL}/ar`,
+      school,
+      `${school}/students`,
+      `${school}/invoices`,
+      `${school}/invoices/00000000-0000-4000-8000-000000000000`,
+      `${school}/ledger`,
+      `${school}/admissions`,
+      `${school}/admissions/00000000-0000-4000-8000-000000000000`,
+    ]) {
+      await fetch(page, { signal: AbortSignal.timeout(120_000) });
+    }
   } catch (error) {
     await teardown();
     throw error;

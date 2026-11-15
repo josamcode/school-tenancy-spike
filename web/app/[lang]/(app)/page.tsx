@@ -1,5 +1,8 @@
 import { notFound } from 'next/navigation';
-import { isLang, messages } from '../../../lib/i18n';
+import { ApiError } from '../../../components/api-error';
+import { Screen } from '../../../components/screen';
+import { getMySchools } from '../../../lib/api';
+import { isLang, messages, pickText } from '../../../lib/i18n';
 
 export default async function Home({
   params,
@@ -8,15 +11,50 @@ export default async function Home({
 }) {
   const { lang } = await params;
   if (!isLang(lang)) notFound();
+  const text = messages(lang);
+  const schools = await getMySchools();
+
   return (
-    <>
-      <h1>{messages(lang).appName}</h1>
-      <p>{messages(lang)['home.intro']}</p>
+    <Screen lang={lang} exchanges={[schools.exchange]}>
+      <h1>{text.appName}</h1>
+      <p className="lead">{text['home.intro']}</p>
+      {schools.ok ? (
+        <>
+          <h2>{text['schools.label']}</h2>
+          {schools.data.length === 0 ? (
+            <p>{text['schools.none']}</p>
+          ) : (
+            <ul className="link-list">
+              {schools.data.map((school) => {
+                const name = pickText(school.nameI18n, lang, school.name)!;
+                return (
+                  <li key={school.id}>
+                    <a
+                      href={`/${lang}/schools/${school.id}`}
+                      data-testid="my-school"
+                    >
+                      <bdi lang={name.lang}>{name.text}</bdi>
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </>
+      ) : (
+        <ApiError
+          status={schools.status}
+          problem={schools.problem}
+          lang={lang}
+        />
+      )}
       {process.env.NODE_ENV !== 'production' && (
-        <p>
-          <a href={`/${lang}/dev/sign-in`}>Demo</a>
+        <p className="note">
+          <a href={`/${lang}/dev/sign-in`}>
+            {lang === 'ar' ? 'الدخول كمستخدم تجريبي' : 'Sign in as a demo user'}
+          </a>
         </p>
       )}
-    </>
+    </Screen>
   );
 }
