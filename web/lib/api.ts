@@ -54,6 +54,8 @@ export interface School {
   id: string;
   name: string;
   nameI18n: I18nText | null;
+  // An IANA name, such as Asia/Dubai.
+  timezone: string;
   // Null when the user holds only grants in the school.
   role: string | null;
   grants: string[];
@@ -158,6 +160,19 @@ const school = (schoolId: string) => `/schools/${segment(schoolId)}`;
 
 // Asked once per page, however many parts of the page need it.
 export const getMySchools = cache(() => call<School[]>('GET', '/me/schools'));
+
+// The one place a screen learns a school's timezone: the list of the user's
+// schools. The API's instants are in UTC, and a screen shows them in this
+// zone. A school that is not in the list has nothing to show a time for.
+export function timeZoneOf(
+  schools: ApiResult<School[]>,
+  schoolId: string,
+): string {
+  const found = schools.ok
+    ? schools.data.find((candidate) => candidate.id === schoolId)
+    : undefined;
+  return found?.timezone ?? 'UTC';
+}
 
 export const getStudents = (schoolId: string) =>
   call<Student[]>('GET', `${school(schoolId)}/students`);

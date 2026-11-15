@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { ApiError } from '../../../../../../../components/api-error';
 import { AutoRefresh } from '../../../../../../../components/auto-refresh';
+import { Instant } from '../../../../../../../components/instant';
 import { Money } from '../../../../../../../components/money';
 import { Screen } from '../../../../../../../components/screen';
 import { acceptanceOf } from '../../../../../../../lib/accepted';
@@ -9,8 +10,8 @@ import {
   getApplications,
   getLedger,
   getMySchools,
+  timeZoneOf,
 } from '../../../../../../../lib/api';
-import { formatInstant } from '../../../../../../../lib/format';
 import { isLang, messages } from '../../../../../../../lib/i18n';
 import { receiverRecords } from '../../../../../../../lib/receiver';
 
@@ -79,6 +80,8 @@ export default async function ApplicationTrail({
       ? await receiverRecords(trail.event.id)
       : undefined;
 
+  // Every time on this page is shown in the school's own timezone.
+  const timeZone = timeZoneOf(schools, schoolId);
   const accepted = application.status === 'accepted';
   const delivery = trail?.delivery ?? null;
   const outcome: State = trail?.failure
@@ -131,7 +134,13 @@ export default async function ApplicationTrail({
             {accepted ? text['trail.accepted'] : text['trail.notAccepted']}
           </p>
           {application.acceptedAt && (
-            <p>{formatInstant(application.acceptedAt, lang)}</p>
+            <p>
+              <Instant
+                at={application.acceptedAt}
+                timeZone={timeZone}
+                lang={lang}
+              />
+            </p>
           )}
         </li>
 
@@ -147,7 +156,13 @@ export default async function ApplicationTrail({
               : text['trail.waiting']}
           </p>
           {trail?.event.dispatchedAt && (
-            <p>{formatInstant(trail.event.dispatchedAt, lang)}</p>
+            <p>
+              <Instant
+                at={trail.event.dispatchedAt}
+                timeZone={timeZone}
+                lang={lang}
+              />
+            </p>
           )}
         </li>
 
@@ -165,7 +180,11 @@ export default async function ApplicationTrail({
                 ? text['trail.routedToWebhook']
                 : text['trail.waiting']}
           </p>
-          {trail?.routedAt && <p>{formatInstant(trail.routedAt, lang)}</p>}
+          {trail?.routedAt && (
+            <p>
+              <Instant at={trail.routedAt} timeZone={timeZone} lang={lang} />
+            </p>
+          )}
         </li>
 
         <li
@@ -219,7 +238,13 @@ export default async function ApplicationTrail({
                 </p>
               )}
               {delivery.finishedAt && (
-                <p>{formatInstant(delivery.finishedAt, lang)}</p>
+                <p>
+                  <Instant
+                    at={delivery.finishedAt}
+                    timeZone={timeZone}
+                    lang={lang}
+                  />
+                </p>
               )}
             </>
           ) : (
@@ -249,7 +274,13 @@ export default async function ApplicationTrail({
                     data-response={attempt.responseStatus ?? undefined}
                   >
                     <td className="number">{attempt.attemptNo}</td>
-                    <td>{formatInstant(attempt.startedAt, lang)}</td>
+                    <td>
+                      <Instant
+                        at={attempt.startedAt}
+                        timeZone={timeZone}
+                        lang={lang}
+                      />
+                    </td>
                     <td>
                       {attempt.responseStatus ?? (
                         <>
@@ -285,7 +316,13 @@ export default async function ApplicationTrail({
               <tbody>
                 {records.map((record, index) => (
                   <tr key={index}>
-                    <td>{formatInstant(record.receivedAt, lang)}</td>
+                    <td>
+                      <Instant
+                        at={record.receivedAt}
+                        timeZone={timeZone}
+                        lang={lang}
+                      />
+                    </td>
                     <td>{text[`receiver.${record.verdict}`]}</td>
                     <td>
                       {record.signatureValid ? (

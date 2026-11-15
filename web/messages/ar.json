@@ -123,7 +123,7 @@
   "trail.time": "الوقت",
   "trail.response": "رد المستقبِل",
   "trail.noResponse": "لا رد",
-  "time.utc": "{date}، {time} بتوقيت غرينتش",
+  "time.inZone": "{date}، {time} ({zone})",
   "receiver.title": "ما سجّله المستقبِل",
   "receiver.developmentOnly": "في بيئة التطوير فقط",
   "receiver.signatureValid": "التوقيع صحيح",
