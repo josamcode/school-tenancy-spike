@@ -68,7 +68,11 @@ function DateBlock({
       <dd data-testid={`${testId}-gregorian`}>
         {formatGregorian(date.gregorian, lang)}
       </dd>
-      <dd data-testid={`${testId}-hijri`}>{formatHijri(date.hijri, lang)}</dd>
+      <dd data-testid={`${testId}-hijri`}>
+        {date.hijri
+          ? formatHijri(date.hijri, lang)
+          : messages(lang)['invoice.hijriUnavailable']}
+      </dd>
     </div>
   );
 }

@@ -10,6 +10,7 @@
   "invoice.issuedTo": "صدرت هذه الفاتورة للطالب {student} بتاريخ {date}.",
   "invoice.issueDate": "تاريخ الإصدار",
   "invoice.dueDate": "تاريخ الاستحقاق",
+  "invoice.hijriUnavailable": "التاريخ الهجري غير متاح",
   "invoice.description": "البيان",
   "invoice.amount": "المبلغ",
   "invoice.total": "الإجمالي",

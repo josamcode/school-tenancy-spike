@@ -10,6 +10,7 @@
   "invoice.issuedTo": "This invoice was issued to {student} on {date}.",
   "invoice.issueDate": "Issue date",
   "invoice.dueDate": "Due date",
+  "invoice.hijriUnavailable": "Hijri date unavailable",
   "invoice.description": "Description",
   "invoice.amount": "Amount",
   "invoice.total": "Total",

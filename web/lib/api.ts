@@ -17,7 +17,8 @@ export type ApiResult<T> =
 
 interface DualDate {
   gregorian: string;
-  hijri: HijriDate;
+  // Null when the API could not work it out.
+  hijri: HijriDate | null;
 }
 
 export interface Invoice {
