@@ -67,7 +67,8 @@ export class InvoicesController {
 
     const dated = async (gregorian: string) => ({
       gregorian,
-      hijri: await this.calendar.toHijri(gregorian),
+      // Null when it cannot be worked out. The invoice is served either way.
+      hijri: await this.calendar.forDisplay(gregorian),
     });
     return {
       id: row.id,

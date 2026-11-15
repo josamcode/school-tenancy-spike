@@ -15,6 +15,19 @@ export interface MonthOverride {
   startsOn: string;
 }
 
+// An override that cannot be right. It names what to look at.
+export class HijriOverrideError extends Error {
+  constructor(
+    message: string,
+    readonly country: string,
+    readonly month: string,
+    readonly startsOn: string,
+  ) {
+    super(message);
+    this.name = 'HijriOverrideError';
+  }
+}
+
 const DAY_MS = 86_400_000;
 // An override moves at most the months after it until one absorbs the
 // difference, which takes a few months at most.
@@ -122,17 +135,25 @@ export function resolveHijri(
           ? calculatedStart
           : Math.min(Math.max(calculatedStart, previous + 29), previous + 30);
     } else {
-      const name = `The Hijri override for ${country} ${monthLabel(index)}`;
+      const month = monthLabel(index);
+      const startsOn = isoDate(start);
+      const refuse = (reason: string) =>
+        new HijriOverrideError(
+          `The Hijri override for ${country} ${month} starts on ${startsOn}, ${reason}`,
+          country,
+          month,
+          startsOn,
+        );
       if (Math.abs(start - calculatedStart) > MAX_SHIFT_DAYS) {
-        throw new Error(
-          `${name} starts on ${isoDate(start)}, more than ${MAX_SHIFT_DAYS} days from the calculated ${isoDate(calculatedStart)}.`,
+        throw refuse(
+          `more than ${MAX_SHIFT_DAYS} days from the calculated ${isoDate(calculatedStart)}.`,
         );
       }
       const length = previous === undefined ? 29 : start - previous;
       if (length < 29 || length > 30) {
         const before = monthLabel(index - 1);
-        throw new Error(
-          `${name} starts on ${isoDate(start)}, so ${before} would have ${length} days. An override for ${before} is probably missing.`,
+        throw refuse(
+          `so ${before} would have ${length} days. An override for ${before} is probably missing.`,
         );
       }
     }
