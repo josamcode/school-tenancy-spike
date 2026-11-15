@@ -172,6 +172,59 @@ describe('the proof runner, on a small project', () => {
   });
 });
 
+describe('a named test that fails for another reason, with a message of several lines', () => {
+  const EXPLAINED =
+    'a discount that is too large is refused, and the refusal is explained';
+  const LINES = [
+    'The discount was not refused.',
+    'Amount: 100',
+    'Discount: 130',
+    'It gave: -30',
+  ];
+  let result: ProveResult;
+  const printed: string[] = [];
+
+  beforeAll(async () => {
+    result = await run(
+      [
+        sabotage('several-lines', {
+          files: ['checks/explained.test.ts'],
+          mustFail: [{ test: EXPLAINED, because: 'expected 403' }],
+        }),
+      ],
+      (line) => printed.push(line),
+    );
+  }, 120_000);
+
+  it('fails the row', () => {
+    expect(result.baseline).toBeNull();
+    expect(result.rows).toMatchObject([
+      { id: 'several-lines', passed: false, failed: [] },
+    ]);
+    expect(result.rows[0].reason).toContain(
+      `failed for another reason: ${EXPLAINED}`,
+    );
+  });
+
+  // The first line alone does not say which assertion failed.
+  it('gives the whole message in the row, every line of it', () => {
+    for (const line of LINES) {
+      expect(result.rows[0].reason, line).toContain(line);
+    }
+  });
+
+  it('prints every line of the message under the row, each on a line of its own', () => {
+    const at = (text: string) =>
+      printed.findIndex((line) => line.includes(text));
+    const row = at(' several-lines ');
+    expect(row).toBeGreaterThanOrEqual(0);
+    const positions = LINES.map(at);
+    expect(positions.every((position) => position > row)).toBe(true);
+    expect(new Set(positions).size).toBe(LINES.length);
+    expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+  });
+});
+
 describe('a run in which every sabotage is caught', () => {
   it('succeeds', async () => {
     const result = await run([sabotage('caught')]);
