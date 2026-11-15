@@ -30,7 +30,8 @@ export type EntryKind =
   | 'fx_conversion'
   | 'fx_revaluation'
   | 'reversal'
-  | 'adjustment';
+  | 'adjustment'
+  | 'registration_fee';
 
 // A positive amount is a debit and a negative amount is a credit.
 export interface LineInput {
