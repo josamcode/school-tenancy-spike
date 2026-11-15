@@ -2,7 +2,7 @@ import pg from 'pg';
 import { eventSchools, userEvents } from '../../db/seed.js';
 import { EventRef } from '../../src/events/event-types.js';
 import { RegistrationFeeHandler } from '../../src/finance/registration-fee.handler.js';
-import { ownerPool, runtimePool, sleep } from '../support/db.js';
+import { ownerPool, runtimePool, until } from '../support/db.js';
 import {
   deliveryStatus,
   emitEvent,
@@ -139,13 +139,27 @@ describe('routing an event to finance or to the webhook', () => {
       await switcher.query(
         `update tenant_modules set enabled = false where module = 'finance'`,
       );
+      const holder = await switcher.query<{ pid: number }>(
+        'select pg_backend_pid() as pid',
+      );
 
       const handling = w.runner.handle(ref).then(() => {
         handled = true;
       });
-      await sleep(300);
-      expect(handled).toBe(false);
+      // No fixed wait: the handler is known to have reached its decision once
+      // a backend waits for a lock that the switch's transaction holds, or
+      // once the decision is there because nothing made it wait.
+      await until(async () => {
+        const blocked = await pool.query(
+          'select 1 from pg_stat_activity where $1::int = any (pg_blocking_pids(pid))',
+          [holder.rows[0].pid],
+        );
+        return (
+          blocked.rows.length > 0 || (await handlerOf(pool, ref)).length > 0
+        );
+      });
       expect(await handlerOf(pool, ref)).toEqual([]);
+      expect(handled).toBe(false);
 
       await switcher.query('commit');
       await handling;
