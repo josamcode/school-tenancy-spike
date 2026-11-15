@@ -75,7 +75,7 @@ export async function expectDubaiTime(
       ]),
     );
   for (const [instant, text] of shown) {
-    if (!/Z$/.test(instant)) throw new Error(`"${instant}" is not in UTC`);
+    if (!instant.endsWith('Z')) throw new Error(`"${instant}" is not in UTC`);
     const local = new Date(Date.parse(instant) + 4 * 60 * 60 * 1000)
       .toISOString()
       .slice(0, 19);
