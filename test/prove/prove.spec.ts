@@ -209,6 +209,47 @@ describe('a baseline that is red', () => {
   }, 120_000);
 });
 
+describe('a named test that uses what an earlier test left', () => {
+  const FIRST = 'a discount in two steps takes the first discount';
+  const SECOND =
+    'a discount in two steps refuses a second discount that exceeds what is left';
+  const steps = (change: Partial<Sabotage> = {}) =>
+    sabotage('second-step', {
+      files: ['checks/steps.test.ts'],
+      mustFail: [{ test: SECOND, because: NOT_THROWN }],
+      ...change,
+    });
+
+  it('is red by itself, so the run stops before any patch', async () => {
+    const result = await run([steps()]);
+    expect(result.ok).toBe(false);
+    expect(result.rows).toEqual([]);
+    expect(result.baseline).toContain(`failed: ${SECOND}`);
+  }, 120_000);
+
+  it('passes when the earlier test is run with it, and only the named test has to fail', async () => {
+    const result = await run([steps({ alsoRun: [FIRST] })]);
+    expect(result.baseline).toBeNull();
+    expect(result.rows).toMatchObject([
+      { id: 'second-step', passed: true, failed: [SECOND] },
+    ]);
+    expect(result.ok).toBe(true);
+  }, 120_000);
+
+  it('stops the run before any patch when the earlier test is itself red', async () => {
+    const red = 'a check that is already red fails before any patch';
+    const result = await run([
+      steps({
+        files: ['checks/steps.test.ts', 'checks/red.test.ts'],
+        alsoRun: [FIRST, red],
+      }),
+    ]);
+    expect(result.ok).toBe(false);
+    expect(result.rows).toEqual([]);
+    expect(result.baseline).toContain(`failed: ${red}`);
+  }, 120_000);
+});
+
 describe('a manifest that is wrong', () => {
   const refused = async (change: Partial<Sabotage>, problem: string) => {
     const before = snapshot();
