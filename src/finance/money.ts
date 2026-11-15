@@ -113,8 +113,7 @@ export function fromBase(
   rate: string,
 ): string {
   const numerator =
-    toMinor(baseAmount, base) *
-    10n ** BigInt(RATE_SCALE + CURRENCIES[foreign]);
+    toMinor(baseAmount, base) * 10n ** BigInt(RATE_SCALE + CURRENCIES[foreign]);
   const denominator = parseRate(rate) * 10n ** BigInt(CURRENCIES[base]);
   return fromMinor(divideRounded(numerator, denominator), foreign);
 }
