@@ -12,6 +12,7 @@
     "build": "nest build",
     "start": "nest start --env-file .env",
     "start:dev": "nest start --watch --env-file .env",
+    "start:worker": "nest start --entryFile worker --env-file .env",
     "format": "prettier --write .",
     "lint": "oxlint --type-aware",
     "typecheck": "tsc --noEmit",
