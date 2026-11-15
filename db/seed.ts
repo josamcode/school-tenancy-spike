@@ -143,24 +143,68 @@ export async function seed(ownerUrl: string): Promise<void> {
   try {
     await client.query('begin');
 
-    for (const school of [schoolA, schoolB, schoolC, schoolD, schoolE]) {
+    const schools = [
+      schoolA,
+      schoolB,
+      schoolC,
+      schoolD,
+      schoolE,
+      schoolF,
+      schoolG,
+    ];
+    for (const school of schools) {
       await client.query(
         'insert into tenants (id, name) values ($1, $2) on conflict do nothing',
         [school.id, school.name],
       );
     }
-    for (const user of [userA, userB, userBoth, userCDE]) {
+    const users = [
+      userA,
+      userB,
+      userBoth,
+      userCDE,
+      userStaffA,
+      userGroupAdmin,
+      userGrantG,
+      userMemberG,
+    ];
+    for (const user of users) {
       await client.query(
         'insert into users (id, email) values ($1, $2) on conflict do nothing',
         [user.id, user.email],
       );
     }
-    for (const membership of [...memberships, ...membershipsCDE]) {
+    const admins = [...memberships, ...membershipsCDE].map((membership) => ({
+      ...membership,
+      role: 'school_admin',
+    }));
+    for (const membership of [...admins, ...roleMemberships]) {
       await client.query(
-        'insert into memberships (tenant_id, user_id) values ($1, $2) on conflict do nothing',
-        [membership.tenantId, membership.userId],
+        'insert into memberships (tenant_id, user_id, role) values ($1, $2, $3) on conflict do nothing',
+        [membership.tenantId, membership.userId, membership.role],
       );
     }
+    for (const grant of grants) {
+      await client.query(
+        'insert into grants (tenant_id, user_id, permission) values ($1, $2, $3) on conflict do nothing',
+        [grant.tenantId, grant.userId, grant.permission],
+      );
+    }
+
+    await client.query(
+      'insert into groups (id, name) values ($1, $2) on conflict do nothing',
+      [group.id, group.name],
+    );
+    for (const tenantId of groupSchools) {
+      await client.query(
+        'insert into group_schools (group_id, tenant_id) values ($1, $2) on conflict do nothing',
+        [group.id, tenantId],
+      );
+    }
+    await client.query(
+      'insert into group_admins (group_id, user_id) values ($1, $2) on conflict do nothing',
+      [group.id, userGroupAdmin.id],
+    );
 
     // finance: true or false writes a row; undefined leaves the school with no row.
     const tenantData: {
@@ -184,6 +228,8 @@ export async function seed(ownerUrl: string): Promise<void> {
       { school: schoolC, finance: false, students: studentsC },
       { school: schoolD },
       { school: schoolE },
+      { school: schoolF },
+      { school: schoolG, students: studentsG },
     ];
     for (const {
       school,
