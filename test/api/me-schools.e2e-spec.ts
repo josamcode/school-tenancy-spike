@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types.js';
 import {
+  calendarSchools,
   demoSchools,
   schoolA,
   schoolB,
@@ -12,6 +13,7 @@ import {
   schoolH,
   userA,
   userBoth,
+  userCalendar,
   userDemoGroupAdmin,
   userDemoPrincipal,
   userGroupAdmin,
@@ -56,6 +58,7 @@ describe('GET /me/schools', () => {
         id: schoolB.id,
         name: schoolB.name,
         nameI18n: null,
+        timezone: 'Asia/Dubai',
         role: 'school_admin',
         grants: [],
       },
@@ -63,6 +66,7 @@ describe('GET /me/schools', () => {
         id: schoolA.id,
         name: schoolA.name,
         nameI18n: null,
+        timezone: 'Asia/Dubai',
         role: 'school_admin',
         grants: [],
       },
@@ -92,6 +96,7 @@ describe('GET /me/schools', () => {
         id: schoolB.id,
         name: schoolB.name,
         nameI18n: null,
+        timezone: 'Asia/Dubai',
         role: null,
         grants: ['students:read'],
       },
@@ -106,6 +111,7 @@ describe('GET /me/schools', () => {
         id: schoolH.id,
         name: schoolH.name,
         nameI18n: null,
+        timezone: 'Asia/Dubai',
         role: null,
         grants: ['students:create'],
       },
@@ -113,6 +119,7 @@ describe('GET /me/schools', () => {
         id: schoolD.id,
         name: schoolD.name,
         nameI18n: null,
+        timezone: 'Asia/Dubai',
         role: 'staff',
         grants: [],
       },
@@ -128,10 +135,31 @@ describe('GET /me/schools', () => {
         id: school.id,
         name: school.name,
         nameI18n: school.nameI18n,
+        timezone: 'Asia/Dubai',
         role: 'school_admin',
         grants: [],
       })),
     );
+  });
+
+  it('gives each school its own timezone', async () => {
+    const response = await get(userCalendar);
+    expect(response.status).toBe(200);
+    const zones = Object.fromEntries(
+      response.body.map((school: { id: string; timezone: string }) => [
+        school.id,
+        school.timezone,
+      ]),
+    );
+    expect(zones).toEqual(
+      Object.fromEntries(
+        Object.values(calendarSchools).map((school) => [
+          school.id,
+          school.timezone,
+        ]),
+      ),
+    );
+    expect(new Set(Object.values(zones)).size).toBeGreaterThan(3);
   });
 
   it('leaves out the school of a group the user administers but has no grant in', async () => {
@@ -142,6 +170,7 @@ describe('GET /me/schools', () => {
         id: demoSchools.yasmin.id,
         name: demoSchools.yasmin.name,
         nameI18n: demoSchools.yasmin.nameI18n,
+        timezone: 'Asia/Dubai',
         role: null,
         grants: ['finance:read'],
       },
