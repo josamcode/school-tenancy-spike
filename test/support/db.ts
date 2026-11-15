@@ -44,6 +44,7 @@ export async function inScope<T>(
 export interface Failure {
   code: string;
   message: string;
+  detail: string;
 }
 
 export async function failureOf(
@@ -52,8 +53,12 @@ export async function failureOf(
   try {
     await run();
   } catch (error) {
-    const { code, message } = error as Partial<Failure>;
-    return { code: code ?? '', message: message ?? String(error) };
+    const { code, message, detail } = error as Partial<Failure>;
+    return {
+      code: code ?? '',
+      message: message ?? String(error),
+      detail: detail ?? '',
+    };
   }
   return null;
 }
@@ -69,3 +74,26 @@ export const permissionDenied = {
 };
 export const foreignKeyViolation = { code: '23503' };
 export const uniqueViolation = { code: '23505' };
+
+// Commits, unlike inScope. Use it only on a school that no other test reads.
+export async function asOwnerOf(
+  tenantId: string,
+  fn: (client: pg.PoolClient) => Promise<void>,
+): Promise<void> {
+  const pool = ownerPool();
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+    await client.query("select set_config('app.tenant_id', $1, true)", [
+      tenantId,
+    ]);
+    await fn(client);
+    await client.query('commit');
+  } catch (error) {
+    await client.query('rollback');
+    throw error;
+  } finally {
+    client.release();
+    await pool.end();
+  }
+}

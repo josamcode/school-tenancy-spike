@@ -60,6 +60,29 @@ export const invoicesB = [
 
 export const modules = ['finance'];
 
+// Schools for the module entitlement tests. Finance is on for A and B.
+// C has a finance row that is switched off and D has no finance row; both are
+// only read. E is written by one test and read by nothing else.
+export const schoolC = {
+  id: 'c1000000-0000-4000-8000-000000000001',
+  name: 'Al Reef School',
+};
+export const schoolD = {
+  id: 'd0000000-0000-4000-8000-000000000001',
+  name: 'Al Waha School',
+};
+export const schoolE = {
+  id: 'e0000000-0000-4000-8000-000000000001',
+  name: 'Al Manar School',
+};
+export const userCDE = {
+  id: 'cde00000-0000-4000-8000-0000000000e1',
+  email: 'registrar@reef-waha-manar.test',
+};
+export const studentsC = [
+  { id: 'c1000000-0000-4000-8000-000000000101', fullName: 'Noura Al Ketbi' },
+];
+
 export async function seed(ownerUrl: string): Promise<void> {
   const client = new pg.Client({ connectionString: ownerUrl });
   await client.connect();
